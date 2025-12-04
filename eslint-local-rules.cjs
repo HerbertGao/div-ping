@@ -87,8 +87,8 @@ module.exports = {
         CallExpression(node) {
           const methodName = context.sourceCode.getText(node.callee);
 
-          // Check if this is a user-facing method call
-          const isUserFacing = userFacingMethods.some((method) => methodName.includes(method));
+          // Check if this is a user-facing method call (exact match)
+          const isUserFacing = userFacingMethods.includes(methodName);
 
           if (isUserFacing && node.arguments.length > 0) {
             const firstArg = node.arguments[0];
