@@ -315,26 +315,46 @@ class ProjectManager {
     // 每3秒刷新一次日志
     const refreshInterval = setInterval(refreshLogs, 3000);
 
-    dialog.querySelector('#closeLogsBtn').addEventListener('click', () => {
-      clearInterval(refreshInterval);
+    // 清理函数 - 确保在任何情况下都清理定时器
+    const cleanup = () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
       dialog.remove();
-    });
+    };
+
+    dialog.querySelector('#closeLogsBtn').addEventListener('click', cleanup);
 
     dialog.querySelector('#clearLogsBtn').addEventListener('click', async () => {
       if (confirm('确定要清空所有日志吗?')) {
         await chrome.runtime.sendMessage({ action: 'clearProjectLogs', projectId });
-        clearInterval(refreshInterval);
-        dialog.remove();
+        cleanup();
       }
     });
 
     // 点击背景关闭时也清理定时器
     dialog.querySelector('div').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
-        clearInterval(refreshInterval);
-        dialog.remove();
+        cleanup();
       }
     });
+
+    // 页面卸载时清理（防止用户关闭弹出窗口但dialog还存在）
+    window.addEventListener('beforeunload', cleanup);
+
+    // 使用MutationObserver检测dialog被移除
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          if (node === dialog) {
+            clearInterval(refreshInterval);
+            observer.disconnect();
+            break;
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true });
   }
 
   renderLogs(logs) {

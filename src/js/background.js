@@ -5,6 +5,63 @@ class MonitorManager {
     this.init();
   }
 
+  // 验证Webhook URL安全性（防止SSRF攻击）
+  validateWebhookUrl(urlString) {
+    try {
+      const url = new URL(urlString);
+
+      // 只允许HTTP和HTTPS协议
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new Error('只支持 HTTP 和 HTTPS 协议');
+      }
+
+      // 警告非HTTPS URL
+      if (url.protocol === 'http:') {
+        console.warn('警告: Webhook使用HTTP协议，建议使用HTTPS');
+      }
+
+      // 获取hostname
+      const hostname = url.hostname.toLowerCase();
+
+      // 禁止localhost和127.0.0.1
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+        throw new Error('禁止访问本地地址');
+      }
+
+      // 禁止私有IP地址范围
+      const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+      const ipv4Match = hostname.match(ipv4Pattern);
+
+      if (ipv4Match) {
+        const parts = ipv4Match.slice(1, 5).map(Number);
+
+        // 检查私有IP范围
+        if (
+          parts[0] === 10 || // 10.0.0.0/8
+          (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || // 172.16.0.0/12
+          (parts[0] === 192 && parts[1] === 168) || // 192.168.0.0/16
+          (parts[0] === 169 && parts[1] === 254) || // 169.254.0.0/16 (link-local)
+          parts[0] === 0 || // 0.0.0.0/8
+          parts[0] >= 224 // 224.0.0.0/4 (multicast) and above
+        ) {
+          throw new Error('禁止访问私有IP地址');
+        }
+      }
+
+      // 禁止内网域名
+      if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+        throw new Error('禁止访问内网域名');
+      }
+
+      return true;
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new Error('无效的URL格式');
+      }
+      throw error;
+    }
+  }
+
   async init() {
     // 加载已保存的项目并启动活动监控
     const data = await chrome.storage.local.get(['projects']);
@@ -395,6 +452,14 @@ class MonitorManager {
   async sendWebhook(webhook, project, oldContent, newContent) {
     const timestamp = new Date().toISOString();
 
+    // 验证Webhook URL（防止SSRF）
+    try {
+      this.validateWebhookUrl(webhook.url);
+    } catch (error) {
+      console.error('Webhook URL验证失败:', error.message);
+      throw new Error(`Webhook URL验证失败: ${error.message}`);
+    }
+
     // 可用变量
     const variables = {
       projectId: project.id,
@@ -411,6 +476,14 @@ class MonitorManager {
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       url = url.replace(regex, encodeURIComponent(String(value)));
+    }
+
+    // 再次验证替换后的URL
+    try {
+      this.validateWebhookUrl(url);
+    } catch (error) {
+      console.error('替换变量后的URL验证失败:', error.message);
+      throw new Error(`替换变量后的URL验证失败: ${error.message}`);
     }
 
     // 准备请求配置
@@ -465,19 +538,42 @@ class MonitorManager {
       // 如果webhook.body为空，则不设置body
     }
 
-    // 发送请求
-    const response = await fetch(url, fetchOptions);
+    // 发送请求（带超时控制）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
 
-    if (!response.ok) {
-      throw new Error(`Webhook request failed: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Webhook request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Webhook请求超时（10秒）');
+      }
+      throw error;
     }
-
-    return response;
   }
 
   // 测试Webhook
   async testWebhook(config) {
     const timestamp = new Date().toISOString();
+
+    // 验证Webhook URL（防止SSRF）
+    try {
+      this.validateWebhookUrl(config.url);
+    } catch (error) {
+      console.error('Webhook URL验证失败:', error.message);
+      throw new Error(`Webhook URL验证失败: ${error.message}`);
+    }
 
     // 测试用变量
     const variables = {
@@ -495,6 +591,14 @@ class MonitorManager {
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       url = url.replace(regex, encodeURIComponent(String(value)));
+    }
+
+    // 再次验证替换后的URL
+    try {
+      this.validateWebhookUrl(url);
+    } catch (error) {
+      console.error('替换变量后的URL验证失败:', error.message);
+      throw new Error(`替换变量后的URL验证失败: ${error.message}`);
     }
 
     // 准备请求配置
@@ -549,11 +653,26 @@ class MonitorManager {
       // 如果config.body为空，则不设置body
     }
 
-    // 发送请求
-    const response = await fetch(url, fetchOptions);
+    // 发送请求（带超时控制）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
 
-    // 返回响应（无论成功还是失败，让调用方处理）
-    return response;
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      // 返回响应（无论成功还是失败，让调用方处理）
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Webhook请求超时（10秒）');
+      }
+      throw error;
+    }
   }
 }
 
