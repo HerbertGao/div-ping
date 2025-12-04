@@ -587,7 +587,7 @@
   "redirectTarget": {
     "message": "Redirect target"
   },
-  "webhookTimeout": {
+  "webhookTimeoutError": {
     "message": "Webhook request timeout ($seconds$ seconds)",
     "placeholders": {
       "seconds": {

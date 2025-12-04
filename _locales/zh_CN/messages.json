@@ -587,7 +587,7 @@
   "redirectTarget": {
     "message": "重定向目标"
   },
-  "webhookTimeout": {
+  "webhookTimeoutError": {
     "message": "Webhook请求超时（$seconds$秒）",
     "placeholders": {
       "seconds": {

@@ -35,8 +35,8 @@ export const LIMITS = {
   MAX_URL_LENGTH: 2000,
   /** Maximum webhook body size in bytes */
   MAX_WEBHOOK_BODY_SIZE: 10000,
-  /** Maximum tab cache size */
-  MAX_TAB_CACHE_SIZE: 50,
+  /** Maximum tab cache size (increased to support monitoring many URLs) */
+  MAX_TAB_CACHE_SIZE: 200,
 } as const;
 
 /**

@@ -62,23 +62,6 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 
 **调试方法:** `chrome://extensions/` → Service Worker 查看日志
 
-## 开发待办
-
-### 中优先级
-
-- [ ] 改为动态权限请求 - 当前`<all_urls>`权限过大
-- [ ] 程序化注入content script - 避免在所有页面加载脚本
-- [ ] 添加Webhook速率限制 - 防止频繁触发
-- [ ] 实现输入验证 - 项目名称、选择器、间隔等
-- [ ] 添加错误重试机制 - 网络失败时自动重试
-- [ ] 优化waitForTabLoad实现 - 改为async/await模式避免递归回调
-
-### 低优先级
-
-- [x] ~~添加单元测试~~ - ✅ 已完成（SSRF验证、变量替换、存储管理器、i18n）
-- [ ] 添加JSDoc文档注释 - 为公共API提供文档
-- [ ] 添加内容长度限制 - 防止存储耗尽
-
 ## 许可证
 
 MIT License

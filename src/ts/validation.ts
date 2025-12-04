@@ -53,13 +53,16 @@ export function validateSelector(selector: string): ValidationResult {
   }
 
   // Try to validate selector syntax by attempting to use it
-  try {
-    document.querySelector(selector);
-  } catch (err) {
-    return {
-      valid: false,
-      error: `Invalid CSS selector syntax: ${err instanceof Error ? err.message : 'Unknown error'}`
-    };
+  // Skip validation in service worker context where document is not available
+  if (typeof document !== 'undefined') {
+    try {
+      document.querySelector(selector);
+    } catch (err) {
+      return {
+        valid: false,
+        error: `Invalid CSS selector syntax: ${err instanceof Error ? err.message : 'Unknown error'}`
+      };
+    }
   }
 
   return { valid: true };

@@ -788,6 +788,12 @@ class MonitorManager {
           // 验证JSON并设置body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
+
+          // Set Content-Type header for JSON body if not already set
+          if (!headers['Content-Type'] && !headers['content-type']) {
+            headers['Content-Type'] = 'application/json';
+            fetchOptions.headers = headers;
+          }
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
           throw new Error(t('webhookBodyJsonError') + (error instanceof Error ? error.message : 'Unknown error'));
@@ -821,7 +827,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error(t('webhookTimeout', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
+        throw new Error(t('webhookTimeoutError', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
       }
       throw error;
     }
@@ -906,6 +912,12 @@ class MonitorManager {
           // 验证JSON并设置body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
+
+          // Set Content-Type header for JSON body if not already set
+          if (!headers['Content-Type'] && !headers['content-type']) {
+            headers['Content-Type'] = 'application/json';
+            fetchOptions.headers = headers;
+          }
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
           throw new Error(t('requestBodyJsonError') + (error instanceof Error ? error.message : 'Unknown error'));
@@ -936,7 +948,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error(t('webhookTimeout', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
+        throw new Error(t('webhookTimeoutError', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
       }
       throw error;
     }

@@ -8,8 +8,8 @@ const __dirname = dirname(__filename);
 
 /** @type {import('webpack').Configuration} */
 const config = {
-  mode: 'development',
-  devtool: 'inline-source-map',
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+  devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'inline-source-map',
   entry: {
     background: './src/ts/background.ts',
     content: './src/ts/content.ts',
