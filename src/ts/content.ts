@@ -1,4 +1,5 @@
 import { Project, WebhookConfig, MessageRequest, MessageResponse } from './types';
+import { DEFAULTS, LIMITS } from './constants';
 
 // 元素选择模式
 class ElementSelector {
@@ -176,13 +177,14 @@ class ElementSelector {
 
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">刷新间隔(秒):</label>
-          <input type="number" id="refreshInterval" value="${existingProject ? existingProject.interval / 1000 : 30}" min="5" style="
+          <input type="number" id="refreshInterval" value="${existingProject ? existingProject.interval / 1000 : DEFAULTS.INTERVAL_SECONDS}" min="${LIMITS.MIN_INTERVAL_SECONDS}" style="
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
           ">
+          <div style="font-size: 12px; color: #FF9800; margin-top: 4px;">⚠️ 最小间隔为${LIMITS.MIN_INTERVAL_SECONDS}秒 (Chrome扩展Alarms API限制)</div>
         </div>
 
         <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
@@ -419,12 +421,22 @@ class ElementSelector {
 
     // 确认按钮
     dialog.querySelector<HTMLButtonElement>('#confirmBtn')!.addEventListener('click', () => {
+      // 验证刷新间隔
+      const intervalInput = dialog.querySelector<HTMLInputElement>('#refreshInterval')!;
+      const intervalValue = parseInt(intervalInput.value);
+
+      if (isNaN(intervalValue) || intervalValue < LIMITS.MIN_INTERVAL_SECONDS) {
+        alert(`⚠️ 刷新间隔不能小于${LIMITS.MIN_INTERVAL_SECONDS}秒\n\nChrome扩展的Alarms API要求最小间隔为1分钟（${LIMITS.MIN_INTERVAL_SECONDS}秒）。\n\n如果您需要更频繁的监控，请考虑使用其他监控方案。`);
+        intervalInput.focus();
+        return;
+      }
+
       const webhookEnabled = enableWebhook.checked;
       const config: MessageRequest = {
         action: existingProject ? 'updateProject' : 'elementSelected',
         name: dialog.querySelector<HTMLInputElement>('#projectName')!.value,
         selector: dialog.querySelector<HTMLInputElement>('#elementSelector')!.value,
-        interval: parseInt(dialog.querySelector<HTMLInputElement>('#refreshInterval')!.value) * 1000,
+        interval: intervalValue * 1000,
         browserNotification: dialog.querySelector<HTMLInputElement>('#browserNotification')!.checked,
         url: existingProject ? existingProject.url : window.location.href,
         initialContent: initialContent

@@ -1,6 +1,7 @@
 import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse } from './types';
 import * as ipaddr from 'ipaddr.js';
 import { storageManager } from './storageManager';
+import { TIMEOUTS } from './constants';
 
 // 监控信息接口（不再需要 intervalId）
 interface MonitorInfo {
@@ -433,19 +434,22 @@ class MonitorManager {
 
   public async checkElement(project: Project): Promise<void> {
     let tab: chrome.tabs.Tab | null = null;
-    let shouldCloseTab = false;
+    let isNewlyCreatedTab = false;
 
     try {
       console.log(`[${project.name}] Getting or creating tab for URL: ${project.url}`);
 
-      // 检查缓存中是否已有该URL的标签页
+      // 获取或创建标签页（优先重用现有标签页）
+      // 跟踪缓存状态以确定是否为新创建的标签页
+      const initialCacheSize = this.tabCache.size;
       const hadCachedTab = this.tabCache.has(project.url);
 
-      // 获取或创建标签页（优先重用现有标签页）
       tab = await this.getOrCreateTab(project.url);
 
-      // 如果之前没有缓存，说明是新创建的，需要关闭
-      shouldCloseTab = !hadCachedTab;
+      // 只有在以下情况才关闭标签页：
+      // 1. 之前缓存中没有这个URL
+      // 2. 缓存大小增加了（说明是新创建的标签页，而不是通过query找到的）
+      isNewlyCreatedTab = !hadCachedTab && this.tabCache.size > initialCacheSize;
 
       // 等待页面加载完成
       await this.waitForTabLoad(tab.id!);
@@ -515,7 +519,7 @@ class MonitorManager {
       });
     } finally {
       // 只关闭新创建的临时标签页，不关闭重用的标签页
-      if (shouldCloseTab && tab?.id) {
+      if (isNewlyCreatedTab && tab?.id) {
         try {
           await chrome.tabs.remove(tab.id);
           this.tabCache.delete(project.url);
@@ -529,7 +533,7 @@ class MonitorManager {
     }
   }
 
-  private async waitForTabLoad(tabId: number, timeout: number = 30000): Promise<void> {
+  private async waitForTabLoad(tabId: number, timeout: number = TIMEOUTS.TAB_LOAD): Promise<void> {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
 
@@ -541,12 +545,12 @@ class MonitorManager {
           }
 
           if (tab.status === 'complete') {
-            // 等待额外500ms确保content script已加载
-            setTimeout(() => resolve(), 500);
+            // 等待额外时间确保content script已加载
+            setTimeout(() => resolve(), TIMEOUTS.TAB_LOAD_EXTRA_DELAY);
           } else if (Date.now() - startTime > timeout) {
             reject(new Error('Timeout waiting for tab to load'));
           } else {
-            setTimeout(checkStatus, 100);
+            setTimeout(checkStatus, TIMEOUTS.TAB_STATUS_CHECK);
           }
         });
       };
@@ -610,14 +614,46 @@ class MonitorManager {
     }
   }
 
-  // 变量替换函数
-  private replaceVariables(template: string, variables: WebhookVariables): string {
+  // 变量替换函数 - 用于URL参数
+  private replaceVariablesInUrl(template: string, variables: WebhookVariables): string {
     if (!template) return template;
 
     let result = template;
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       result = result.replace(regex, encodeURIComponent(String(value)));
+    }
+    return result;
+  }
+
+  // 变量替换函数 - 用于请求头（不使用URL编码）
+  private replaceVariablesInHeader(template: string, variables: WebhookVariables): string {
+    if (!template) return template;
+
+    let result = template;
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      // 对于HTTP头，只替换值，不进行URL编码
+      // 移除控制字符和换行符以防止头注入攻击
+      const sanitizedValue = String(value).replace(/[\r\n\x00-\x1F\x7F]/g, '');
+      result = result.replace(regex, sanitizedValue);
+    }
+    return result;
+  }
+
+  // 变量替换函数 - 用于JSON body（正确处理JSON字符串转义）
+  private replaceVariablesInJson(template: string, variables: WebhookVariables): string {
+    if (!template) return template;
+
+    let result = template;
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      // 将值转为JSON字符串，然后移除外层引号
+      // 这样可以正确处理字符串中的特殊字符（如双引号、换行符等）
+      const jsonValue = JSON.stringify(String(value));
+      // 移除 JSON.stringify 添加的外层引号
+      const valueWithoutOuterQuotes = jsonValue.slice(1, -1);
+      result = result.replace(regex, valueWithoutOuterQuotes);
     }
     return result;
   }
@@ -650,11 +686,7 @@ class MonitorManager {
     };
 
     // 替换URL中的变量
-    let url = webhook.url;
-    for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      url = url.replace(regex, encodeURIComponent(String(value)));
-    }
+    let url = this.replaceVariablesInUrl(webhook.url, variables);
 
     // 再次验证替换后的URL
     try {
@@ -666,7 +698,8 @@ class MonitorManager {
 
     // 准备请求配置
     const fetchOptions: RequestInit = {
-      method: webhook.method || 'POST'
+      method: webhook.method || 'POST',
+      redirect: 'manual'  // 防止重定向到内网地址（SSRF保护）
     };
 
     // 处理请求头
@@ -679,7 +712,7 @@ class MonitorManager {
 
         // 替换请求头中的变量
         for (const [key, value] of Object.entries(customHeaders)) {
-          headers[key] = this.replaceVariables(String(value), variables).replace(/%/g, ''); // 解码用于headers
+          headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
       } catch (error) {
         console.error('Failed to parse webhook headers:', error);
@@ -698,19 +731,15 @@ class MonitorManager {
             ? webhook.body
             : JSON.stringify(webhook.body);
 
-          // 替换变量(不编码,因为是JSON内容)
-          let bodyStr = bodyTemplate;
-          for (const [key, value] of Object.entries(variables)) {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            bodyStr = bodyStr.replace(regex, JSON.stringify(String(value)));
-          }
+          // 替换变量，使用专门的JSON替换函数正确处理转义
+          const bodyStr = this.replaceVariablesInJson(bodyTemplate, variables);
 
           // 验证JSON并设置body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
-          // 如果JSON解析失败，记录错误但不使用默认值
+          throw new Error('Webhook body JSON格式错误或变量替换失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
       // 如果webhook.body为空，则不设置body
@@ -718,7 +747,7 @@ class MonitorManager {
 
     // 发送请求（带超时控制）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.WEBHOOK_REQUEST);
 
     try {
       const response = await fetch(url, {
@@ -726,6 +755,12 @@ class MonitorManager {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
+
+      // 检查是否为重定向响应（SSRF保护）
+      if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+        const redirectLocation = response.headers.get('location');
+        throw new Error(`Webhook不允许重定向。如需访问重定向后的地址，请直接配置目标URL。${redirectLocation ? ` (重定向目标: ${redirectLocation})` : ''}`);
+      }
 
       if (!response.ok) {
         throw new Error(`Webhook request failed: ${response.status} ${response.statusText}`);
@@ -735,7 +770,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error('Webhook请求超时（10秒）');
+        throw new Error(`Webhook请求超时（${TIMEOUTS.WEBHOOK_REQUEST / 1000}秒）`);
       }
       throw error;
     }
@@ -769,11 +804,7 @@ class MonitorManager {
     };
 
     // 替换URL中的变量
-    let url = config.url;
-    for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      url = url.replace(regex, encodeURIComponent(String(value)));
-    }
+    let url = this.replaceVariablesInUrl(config.url, variables);
 
     // 再次验证替换后的URL
     try {
@@ -785,7 +816,8 @@ class MonitorManager {
 
     // 准备请求配置
     const fetchOptions: RequestInit = {
-      method: config.method || 'POST'
+      method: config.method || 'POST',
+      redirect: 'manual'  // 防止重定向到内网地址（SSRF保护）
     };
 
     // 处理请求头
@@ -798,7 +830,7 @@ class MonitorManager {
 
         // 替换请求头中的变量
         for (const [key, value] of Object.entries(customHeaders)) {
-          headers[key] = this.replaceVariables(String(value), variables).replace(/%/g, ''); // 解码用于headers
+          headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
       } catch (error) {
         console.error('Failed to parse webhook headers:', error);
@@ -817,19 +849,15 @@ class MonitorManager {
             ? config.body
             : JSON.stringify(config.body);
 
-          // 替换变量(不编码,因为是JSON内容)
-          let bodyStr = bodyTemplate;
-          for (const [key, value] of Object.entries(variables)) {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            bodyStr = bodyStr.replace(regex, JSON.stringify(String(value)));
-          }
+          // 替换变量，使用专门的JSON替换函数正确处理转义
+          const bodyStr = this.replaceVariablesInJson(bodyTemplate, variables);
 
           // 验证JSON并设置body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
-          throw new Error('请求体JSON格式错误: ' + (error instanceof Error ? error.message : 'Unknown error'));
+          throw new Error('请求体JSON格式错误或变量替换失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
       // 如果config.body为空，则不设置body
@@ -837,7 +865,7 @@ class MonitorManager {
 
     // 发送请求（带超时控制）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.WEBHOOK_REQUEST);
 
     try {
       const response = await fetch(url, {
@@ -846,12 +874,18 @@ class MonitorManager {
       });
       clearTimeout(timeoutId);
 
+      // 检查是否为重定向响应（SSRF保护）
+      if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+        const redirectLocation = response.headers.get('location');
+        throw new Error(`Webhook不允许重定向。如需访问重定向后的地址，请直接配置目标URL。${redirectLocation ? ` (重定向目标: ${redirectLocation})` : ''}`);
+      }
+
       // 返回响应（无论成功还是失败，让调用方处理）
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error('Webhook请求超时（10秒）');
+        throw new Error(`Webhook请求超时（${TIMEOUTS.WEBHOOK_REQUEST / 1000}秒）`);
       }
       throw error;
     }

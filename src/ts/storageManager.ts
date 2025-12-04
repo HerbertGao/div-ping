@@ -1,4 +1,5 @@
 import { Project, LogEntry } from './types';
+import { LIMITS } from './constants';
 
 /**
  * Storage Manager with mutex lock to prevent race conditions
@@ -18,8 +19,11 @@ class StorageManager {
     const currentOperation = this.operationQueue.then(operation);
 
     // Update queue to point to the new operation (ignoring errors from previous operations)
-    this.operationQueue = currentOperation.catch(() => {
-      // Ignore errors to prevent them from blocking the queue
+    this.operationQueue = currentOperation.catch((error) => {
+      // Log errors but don't block the queue
+      console.error('Storage operation failed:', error);
+      // Note: Individual operations will still reject with their errors
+      // This catch is only to prevent queue blocking
     });
 
     return currentOperation;
@@ -122,9 +126,9 @@ class StorageManager {
 
       logs[projectId].unshift(logEntry);
 
-      // Keep only last 100 logs per project
-      if (logs[projectId].length > 100) {
-        logs[projectId] = logs[projectId].slice(0, 100);
+      // Keep only last N logs per project
+      if (logs[projectId].length > LIMITS.MAX_LOGS_PER_PROJECT) {
+        logs[projectId] = logs[projectId].slice(0, LIMITS.MAX_LOGS_PER_PROJECT);
       }
 
       await chrome.storage.local.set({ logs });
