@@ -38,5 +38,8 @@
       "run_at": "document_idle"
     }
   ],
-  "options_page": "src/options.html"
+  "options_page": "src/options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }

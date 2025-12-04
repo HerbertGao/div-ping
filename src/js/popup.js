@@ -315,24 +315,51 @@ class ProjectManager {
     // 每3秒刷新一次日志
     const refreshInterval = setInterval(refreshLogs, 3000);
 
-    dialog.querySelector('#closeLogsBtn').addEventListener('click', () => {
-      clearInterval(refreshInterval);
-      dialog.remove();
+    // 使用MutationObserver检测dialog被移除
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          if (node === dialog) {
+            clearInterval(refreshInterval);
+            observer.disconnect();
+            window.removeEventListener('beforeunload', cleanupHandler);
+            break;
+          }
+        }
+      }
     });
+    observer.observe(document.body, { childList: true });
+
+    // 清理函数 - 确保清理所有资源
+    const cleanup = () => {
+      clearInterval(refreshInterval);
+      observer.disconnect();
+      window.removeEventListener('beforeunload', cleanupHandler);
+      dialog.remove();
+    };
+
+    // beforeunload处理器（需要命名以便移除）
+    const cleanupHandler = () => {
+      clearInterval(refreshInterval);
+      observer.disconnect();
+    };
+
+    // 页面卸载时清理
+    window.addEventListener('beforeunload', cleanupHandler);
+
+    dialog.querySelector('#closeLogsBtn').addEventListener('click', cleanup);
 
     dialog.querySelector('#clearLogsBtn').addEventListener('click', async () => {
       if (confirm('确定要清空所有日志吗?')) {
         await chrome.runtime.sendMessage({ action: 'clearProjectLogs', projectId });
-        clearInterval(refreshInterval);
-        dialog.remove();
+        cleanup();
       }
     });
 
-    // 点击背景关闭时也清理定时器
+    // 点击背景关闭时也清理
     dialog.querySelector('div').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
-        clearInterval(refreshInterval);
-        dialog.remove();
+        cleanup();
       }
     });
   }
