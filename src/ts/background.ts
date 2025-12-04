@@ -635,6 +635,7 @@ class MonitorManager {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       // 对于HTTP头，只替换值，不进行URL编码
       // 移除控制字符和换行符以防止头注入攻击
+      // eslint-disable-next-line no-control-regex -- Intentionally matching control characters for security (header injection prevention)
       const sanitizedValue = String(value).replace(/[\r\n\x00-\x1F\x7F]/g, '');
       result = result.replace(regex, sanitizedValue);
     }
