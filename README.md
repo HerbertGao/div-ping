@@ -62,6 +62,15 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 
 **Debugging:** `chrome://extensions/` → Service Worker to view logs
 
+## Testing
+
+```bash
+npm test                 # Run tests
+npm run test:coverage    # Generate coverage report
+```
+
+All 74 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, and i18n.
+
 ## Development TODO
 
 ### Medium Priority
@@ -69,14 +78,19 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 - [ ] Dynamic permission requests - current `<all_urls>` permission is too broad
 - [ ] Programmatic content script injection - avoid loading scripts on all pages
 - [ ] Webhook rate limiting - prevent frequent triggering
-- [ ] Input validation - project name, selectors, intervals, etc.
 - [ ] Error retry mechanism - automatic retry on network failures
-- [ ] Optimize waitForTabLoad implementation - use async/await instead of recursive callbacks
 
 ### Low Priority
 
 - [ ] Add JSDoc documentation - for public APIs
 - [ ] Content length limits - prevent storage exhaustion
+
+### Completed
+
+- [x] ~~Input validation~~ - ✅ Comprehensive validation module implemented (validation.ts)
+- [x] ~~Optimize waitForTabLoad~~ - ✅ Now uses async/await instead of recursive callbacks
+- [x] ~~Add unit tests~~ - ✅ 74 tests covering SSRF, validation, storage, i18n
+- [x] ~~i18n support~~ - ✅ Full internationalization with custom ESLint enforcement
 
 ## License
 

@@ -87,6 +87,7 @@ Instead of adding detailed sections to README, create dedicated documentation fi
 - Always update both README.md (English) and README.zh-CN.md (Chinese)
 - Keep both versions synchronized in structure and content
 - Apply the same conciseness guidelines to both language versions
+- **Development TODO section**: Only display in README.md (English version), do NOT include in other language versions (e.g., README.zh-CN.md)
 
 ## Git Workflow
 
