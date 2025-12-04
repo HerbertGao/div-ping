@@ -10,6 +10,12 @@ interface MonitorInfo {
   project: Project;
 }
 
+// Tab获取结果接口
+interface TabResult {
+  tab: chrome.tabs.Tab;
+  isNewlyCreated: boolean;
+}
+
 // Webhook变量接口
 interface WebhookVariables {
   projectId: string;
@@ -439,7 +445,7 @@ class MonitorManager {
    * 获取或创建用于检测的标签页
    * 优先重用已存在的标签页，减少资源消耗
    */
-  private async getOrCreateTab(url: string): Promise<chrome.tabs.Tab> {
+  private async getOrCreateTab(url: string): Promise<TabResult> {
     // 1. 检查缓存中是否有该URL的标签页
     const cachedTabId = this.tabCache.get(url);
     if (cachedTabId) {
@@ -448,7 +454,7 @@ class MonitorManager {
         // 验证标签页是否仍然有效且URL匹配
         if (tab && tab.url === url) {
           console.log(`Reusing cached tab ${cachedTabId} for URL: ${url}`);
-          return tab;
+          return { tab, isNewlyCreated: false };
         } else {
           // 缓存失效，清理
           this.tabCache.delete(url);
@@ -467,7 +473,7 @@ class MonitorManager {
       console.log(`Found existing tab ${tab.id} for URL: ${url}`);
       // 更新缓存
       this.addToTabCache(url, tab.id!);
-      return tab;
+      return { tab, isNewlyCreated: false };
     }
 
     // 3. 创建新标签页（后台打开）
@@ -481,7 +487,7 @@ class MonitorManager {
     // 添加到缓存
     this.addToTabCache(url, newTab.id!);
 
-    return newTab;
+    return { tab: newTab, isNewlyCreated: true };
   }
 
   public async checkElement(project: Project): Promise<void> {
@@ -491,17 +497,10 @@ class MonitorManager {
     try {
       console.log(`[${project.name}] Getting or creating tab for URL: ${project.url}`);
 
-      // 获取或创建标签页（优先重用现有标签页）
-      // 跟踪缓存状态以确定是否为新创建的标签页
-      const initialCacheSize = this.tabCache.size;
-      const hadCachedTab = this.tabCache.has(project.url);
-
-      tab = await this.getOrCreateTab(project.url);
-
-      // 只有在以下情况才关闭标签页：
-      // 1. 之前缓存中没有这个URL
-      // 2. 缓存大小增加了（说明是新创建的标签页，而不是通过query找到的）
-      isNewlyCreatedTab = !hadCachedTab && this.tabCache.size > initialCacheSize;
+      // 获取或创建标签页，返回结果包含标签页和是否为新创建的标志
+      const tabResult = await this.getOrCreateTab(project.url);
+      tab = tabResult.tab;
+      isNewlyCreatedTab = tabResult.isNewlyCreated;
 
       // 等待页面加载完成
       await this.waitForTabLoad(tab.id!);
