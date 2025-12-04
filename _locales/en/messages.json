@@ -588,6 +588,19 @@
       }
     }
   },
+  "webhookHeadersSizeExceeded": {
+    "message": "Webhook headers size ($size$ bytes) exceeds maximum limit ($maxSize$ bytes) after variable substitution",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "9000"
+      },
+      "maxSize": {
+        "content": "$2",
+        "example": "8000"
+      }
+    }
+  },
   "webhookRedirectBlocked": {
     "message": "Webhook redirects are not allowed. If you need to access the redirect target, please configure the target URL directly.$location$",
     "placeholders": {

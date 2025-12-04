@@ -768,8 +768,16 @@ class MonitorManager {
         for (const [key, value] of Object.entries(customHeaders)) {
           headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
+
+        // 验证替换后的请求头总大小
+        const headersString = JSON.stringify(headers);
+        const headersSize = new Blob([headersString]).size;
+        if (headersSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
+          throw new Error(t('webhookHeadersSizeExceeded', [headersSize.toString(), LIMITS.MAX_WEBHOOK_HEADERS_SIZE.toString()]));
+        }
       } catch (error) {
         console.error('Failed to parse webhook headers:', error);
+        throw error;
       }
     }
     if (Object.keys(headers).length > 0) {
@@ -902,8 +910,16 @@ class MonitorManager {
         for (const [key, value] of Object.entries(customHeaders)) {
           headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
+
+        // 验证替换后的请求头总大小
+        const headersString = JSON.stringify(headers);
+        const headersSize = new Blob([headersString]).size;
+        if (headersSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
+          throw new Error(t('webhookHeadersSizeExceeded', [headersSize.toString(), LIMITS.MAX_WEBHOOK_HEADERS_SIZE.toString()]));
+        }
       } catch (error) {
         console.error('Failed to parse webhook headers:', error);
+        throw error;
       }
     }
     if (Object.keys(headers).length > 0) {
