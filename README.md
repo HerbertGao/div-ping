@@ -58,6 +58,7 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 
 ### 高优先级
 
+- [ ] 迁移到TypeScript - 增强类型安全和开发体验
 - [ ] 将setInterval改为chrome.alarms API - Service Worker可能被终止导致定时器丢失
 - [ ] 修复storage竞态条件 - 多个监控同时读写可能导致数据丢失
 - [ ] 优化标签页创建策略 - 每次检测都创建新标签页消耗大量资源
