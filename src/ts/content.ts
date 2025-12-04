@@ -1,5 +1,6 @@
 import { Project, WebhookConfig, MessageRequest, MessageResponse } from './types';
 import { DEFAULTS, LIMITS } from './constants';
+import { t } from './i18n';
 
 // 元素选择模式
 class ElementSelector {
@@ -129,8 +130,12 @@ class ElementSelector {
 
   public showConfigDialog(element: HTMLElement | null, existingProject?: Project): void {
     const selector = existingProject ? existingProject.selector : this.getSelector(element!);
+
+    // Safely get initial content:
+    // - For existing projects: use lastContent if available, otherwise try element if it exists, else empty string
+    // - For new projects: element must exist (non-null assertion is safe here)
     const initialContent = existingProject
-      ? existingProject.lastContent || this.getElementContent(element!)
+      ? existingProject.lastContent || (element ? this.getElementContent(element) : '')
       : this.getElementContent(element!);
 
     // 创建配置对话框
@@ -150,11 +155,11 @@ class ElementSelector {
         min-width: 400px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
-        <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #333;">配置监控项目</h2>
+        <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #333;">${t('projectConfig')}</h2>
 
         <div style="margin-bottom: 12px;">
-          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">项目名称:</label>
-          <input type="text" id="projectName" value="${existingProject ? this.escapeHtml(existingProject.name) : '监控-' + new Date().toLocaleString()}" style="
+          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('projectName')}:</label>
+          <input type="text" id="projectName" value="${existingProject ? this.escapeHtml(existingProject.name) : t('monitorPrefix') + new Date().toLocaleString()}" style="
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -164,7 +169,7 @@ class ElementSelector {
         </div>
 
         <div style="margin-bottom: 12px;">
-          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">选择器:</label>
+          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('selector')}:</label>
           <input type="text" id="elementSelector" value="${this.escapeHtml(selector)}" style="
             width: 100%;
             padding: 8px;
@@ -176,7 +181,7 @@ class ElementSelector {
         </div>
 
         <div style="margin-bottom: 12px;">
-          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">刷新间隔(秒):</label>
+          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('intervalSeconds')}:</label>
           <input type="number" id="refreshInterval" value="${existingProject ? existingProject.interval / 1000 : DEFAULTS.INTERVAL_SECONDS}" min="${LIMITS.MIN_INTERVAL_SECONDS}" style="
             width: 100%;
             padding: 8px;
@@ -184,28 +189,28 @@ class ElementSelector {
             border-radius: 4px;
             font-size: 14px;
           ">
-          <div style="font-size: 12px; color: #FF9800; margin-top: 4px;">⚠️ 最小间隔为${LIMITS.MIN_INTERVAL_SECONDS}秒 (Chrome扩展Alarms API限制)</div>
+          <div style="font-size: 12px; color: #FF9800; margin-top: 4px;">${t('minIntervalWarning', [LIMITS.MIN_INTERVAL_SECONDS.toString()])}</div>
         </div>
 
         <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
           <label style="display: flex; align-items: center; font-size: 14px; color: #666;">
             <input type="checkbox" id="browserNotification" ${existingProject ? (existingProject.browserNotification ? 'checked' : '') : 'checked'} style="margin-right: 8px;">
-            启用浏览器通知
+            ${t('enableBrowserNotification')}
           </label>
-          <button id="testBrowserNotification" ${existingProject ? (existingProject.browserNotification ? '' : 'disabled') : ''} style="padding: 4px 12px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">测试</button>
+          <button id="testBrowserNotification" ${existingProject ? (existingProject.browserNotification ? '' : 'disabled') : ''} style="padding: 4px 12px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">${t('test')}</button>
         </div>
 
         <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
           <label style="display: flex; align-items: center; font-size: 14px; color: #666;">
             <input type="checkbox" id="enableWebhook" ${existingProject && existingProject.webhook?.enabled ? 'checked' : ''} style="margin-right: 8px;">
-            启用Webhook通知
+            ${t('enableWebhook')}
           </label>
-          <button id="testWebhook" ${existingProject && existingProject.webhook?.enabled ? '' : 'disabled'} style="padding: 4px 12px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">测试</button>
+          <button id="testWebhook" ${existingProject && existingProject.webhook?.enabled ? '' : 'disabled'} style="padding: 4px 12px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">${t('test')}</button>
         </div>
 
         <div id="webhookConfig" style="display: ${existingProject && existingProject.webhook?.enabled ? 'block' : 'none'}; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 4px; padding: 12px;">
           <div style="margin-bottom: 8px;">
-            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">请求方法:</label>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">${t('webhookMethod')}:</label>
             <select id="webhookMethod" style="
               width: 100%;
               padding: 8px;
@@ -220,7 +225,7 @@ class ElementSelector {
           </div>
 
           <div style="margin-bottom: 8px;">
-            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">Webhook URL:</label>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">${t('webhookUrl')}:</label>
             <input type="url" id="webhookUrl" value="${existingProject && existingProject.webhook?.url ? this.escapeHtml(existingProject.webhook.url) : ''}" placeholder="https://example.com/webhook?key={{oldContent}}" style="
               width: 100%;
               padding: 8px;
@@ -230,12 +235,12 @@ class ElementSelector {
               font-family: monospace;
             ">
             <div style="font-size: 11px; color: #999; margin-top: 4px;">
-              支持变量: {{projectName}}, {{url}}, {{selector}}, {{oldContent}}, {{newContent}}, {{timestamp}}
+              ${t('webhookVariablesHelp')}
             </div>
           </div>
 
           <div style="margin-bottom: 8px;">
-            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">请求头 (JSON格式, 可选):</label>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">${t('webhookHeaders')}:</label>
             <textarea id="webhookHeaders" placeholder='{"Authorization": "Bearer {{token}}"}'style="
               width: 100%;
               padding: 8px;
@@ -248,7 +253,7 @@ class ElementSelector {
           </div>
 
           <div style="margin-bottom: 0;">
-            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">请求体 (仅POST/PUT, JSON格式):</label>
+            <label style="display: block; margin-bottom: 4px; font-size: 13px; color: #666;">${t('webhookBody')}:</label>
             <textarea id="webhookBody" placeholder='{"project": "{{projectName}}", "old": "{{oldContent}}", "new": "{{newContent}}"}'style="
               width: 100%;
               padding: 8px;
@@ -259,13 +264,13 @@ class ElementSelector {
               min-height: 60px;
             ">${existingProject && existingProject.webhook?.body ? this.escapeHtml(typeof existingProject.webhook.body === 'string' ? existingProject.webhook.body : JSON.stringify(existingProject.webhook.body)) : ''}</textarea>
             <div style="font-size: 11px; color: #999; margin-top: 4px;">
-              留空则使用默认格式
+              ${t('webhookBodyHelp')}
             </div>
           </div>
         </div>
 
         <div style="margin-bottom: 16px; padding: 12px; background: #f5f5f5; border-radius: 4px;">
-          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">当前内容预览:</div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${t('currentContentPreview')}</div>
           <div style="font-size: 13px; color: #333; max-height: 100px; overflow: auto; word-break: break-all;">
             ${this.escapeHtml(initialContent.substring(0, 200))}${initialContent.length > 200 ? '...' : ''}
           </div>
@@ -279,7 +284,7 @@ class ElementSelector {
             background: white;
             cursor: pointer;
             font-size: 14px;
-          ">取消</button>
+          ">${t('cancel')}</button>
           <button id="confirmBtn" style="
             padding: 8px 16px;
             border: none;
@@ -288,7 +293,7 @@ class ElementSelector {
             color: white;
             cursor: pointer;
             font-size: 14px;
-          ">确认</button>
+          ">${t('save')}</button>
         </div>
       </div>
       <div style="
@@ -328,12 +333,12 @@ class ElementSelector {
         action: 'testBrowserNotification'
       }, (response: MessageResponse) => {
         if (chrome.runtime.lastError) {
-          alert('❌ 通信失败\n\n错误: ' + chrome.runtime.lastError.message);
+          alert(t('communicationFailed', [chrome.runtime.lastError.message || t('unknownError')]));
         } else if (response?.success) {
           // 通知已发送，无需额外提示（用户会在系统中看到通知）
           console.log('Test notification sent successfully');
         } else {
-          alert('❌ 测试通知发送失败\n\n' + (response?.error || '未知错误') + '\n\n请检查浏览器通知权限设置');
+          alert(t('notificationTestFailed', [response?.error || t('unknownError')]));
         }
       });
     });
@@ -346,13 +351,13 @@ class ElementSelector {
       const webhookBody = dialog.querySelector<HTMLTextAreaElement>('#webhookBody')!.value.trim();
 
       if (!webhookUrl) {
-        alert('请先填写Webhook URL');
+        alert(t('webhookUrlEmpty'));
         return;
       }
 
       // 禁用按钮，显示加载状态
       testWebhookBtn.disabled = true;
-      testWebhookBtn.textContent = '发送中...';
+      testWebhookBtn.textContent = t('sending');
 
       try {
         // 准备webhook配置
@@ -368,9 +373,9 @@ class ElementSelector {
             const parsedHeaders = JSON.parse(webhookHeaders);
             webhookConfig.headers = typeof parsedHeaders === 'string' ? parsedHeaders : JSON.stringify(parsedHeaders);
           } catch (error) {
-            alert('请求头JSON格式错误: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            alert(t('webhookHeadersError', [error instanceof Error ? error.message : t('unknownError')]));
             testWebhookBtn.disabled = false;
-            testWebhookBtn.textContent = '测试';
+            testWebhookBtn.textContent = t('test');
             return;
           }
         }
@@ -381,9 +386,9 @@ class ElementSelector {
             const parsedBody = JSON.parse(webhookBody);
             webhookConfig.body = typeof parsedBody === 'string' ? parsedBody : JSON.stringify(parsedBody);
           } catch (error) {
-            alert('请求体JSON格式错误: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            alert(t('webhookBodyError', [error instanceof Error ? error.message : t('unknownError')]));
             testWebhookBtn.disabled = false;
-            testWebhookBtn.textContent = '测试';
+            testWebhookBtn.textContent = t('test');
             return;
           }
         }
@@ -395,22 +400,22 @@ class ElementSelector {
         }, (response: MessageResponse) => {
           if (response?.success && response.status !== undefined) {
             if (response.status >= 200 && response.status < 300) {
-              alert(`✓ 测试成功！\n\n状态码: ${response.status} ${response.statusText}\n\nWebhook服务器已成功接收请求`);
+              alert(t('webhookTestSuccess', [response.status.toString(), response.statusText || '']));
             } else {
-              alert(`⚠ Webhook请求已发送，但返回非成功状态\n\n状态码: ${response.status} ${response.statusText}\n\n可能原因:\n- 请求数据格式不符合服务器要求\n- 认证信息错误\n- 服务器配置问题\n\n请检查Webhook服务端日志获取详细信息`);
+              alert(t('webhookTestWarning', [response.status.toString(), response.statusText || '']));
             }
           } else {
-            alert('❌ 测试失败\n\n错误: ' + (response?.error || '未知错误'));
+            alert(t('webhookTestFailed', [response?.error || t('unknownError')]));
           }
 
           // 恢复按钮状态
           testWebhookBtn.disabled = false;
-          testWebhookBtn.textContent = '测试';
+          testWebhookBtn.textContent = t('test');
         });
       } catch (error) {
-        alert('测试失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        alert(t('webhookTestFailed', [error instanceof Error ? error.message : t('unknownError')]));
         testWebhookBtn.disabled = false;
-        testWebhookBtn.textContent = '测试';
+        testWebhookBtn.textContent = t('test');
       }
     });
 
@@ -426,7 +431,7 @@ class ElementSelector {
       const intervalValue = parseInt(intervalInput.value);
 
       if (isNaN(intervalValue) || intervalValue < LIMITS.MIN_INTERVAL_SECONDS) {
-        alert(`⚠️ 刷新间隔不能小于${LIMITS.MIN_INTERVAL_SECONDS}秒\n\nChrome扩展的Alarms API要求最小间隔为1分钟（${LIMITS.MIN_INTERVAL_SECONDS}秒）。\n\n如果您需要更频繁的监控，请考虑使用其他监控方案。`);
+        alert(t('intervalTooSmall', [LIMITS.MIN_INTERVAL_SECONDS.toString()]));
         intervalInput.focus();
         return;
       }
@@ -464,7 +469,7 @@ class ElementSelector {
       chrome.runtime.sendMessage(config, (response: MessageResponse) => {
         if (chrome.runtime.lastError) {
           console.error('Failed to save project:', chrome.runtime.lastError);
-          alert('保存失败: ' + chrome.runtime.lastError.message);
+          alert(t('saveFailed', [chrome.runtime.lastError.message || t('unknownError')]));
         } else if (response?.success) {
           console.log('Project saved successfully:', response.projectId);
           // 显示成功提示
@@ -481,7 +486,7 @@ class ElementSelector {
             z-index: 10000000;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           `;
-          successMsg.textContent = existingProject ? '✓ 监控项目已更新!' : '✓ 监控项目已创建!';
+          successMsg.textContent = existingProject ? t('projectUpdated') : t('projectCreated');
           document.body.appendChild(successMsg);
           setTimeout(() => successMsg.remove(), 3000);
         }
@@ -491,8 +496,11 @@ class ElementSelector {
     });
   }
 
-  public getElementContent(element: HTMLElement): string {
+  public getElementContent(element: HTMLElement | null): string {
     // 获取元素的文本内容和HTML
+    if (!element) {
+      return '';
+    }
     return element.innerText || element.textContent || element.innerHTML;
   }
 

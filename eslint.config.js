@@ -2,6 +2,10 @@ import eslint from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import commentsPlugin from 'eslint-plugin-eslint-comments';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const localRules = require('./eslint-local-rules.cjs');
 
 export default [
   eslint.configs.recommended,
@@ -44,7 +48,10 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint,
-      'eslint-comments': commentsPlugin
+      'eslint-comments': commentsPlugin,
+      'local-rules': {
+        rules: localRules
+      }
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -89,7 +96,10 @@ export default [
       'no-warning-comments': ['warn', {
         terms: ['todo', 'fixme', 'hack', 'bug', 'xxx'],
         location: 'start'
-      }]
+      }],
+      // I18n rules
+      'local-rules/no-chinese-characters': 'error',
+      'local-rules/no-hardcoded-user-strings': ['warn', { allowConsole: true }]
     }
   },
   {

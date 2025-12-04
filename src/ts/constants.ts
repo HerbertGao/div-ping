@@ -27,6 +27,16 @@ export const LIMITS = {
   MIN_INTERVAL_SECONDS: 60,
   /** Minimum monitoring interval in milliseconds */
   MIN_INTERVAL_MS: 60000,
+  /** Maximum project name length */
+  MAX_PROJECT_NAME_LENGTH: 100,
+  /** Maximum CSS selector length */
+  MAX_SELECTOR_LENGTH: 500,
+  /** Maximum URL length */
+  MAX_URL_LENGTH: 2000,
+  /** Maximum webhook body size in bytes */
+  MAX_WEBHOOK_BODY_SIZE: 10000,
+  /** Maximum tab cache size */
+  MAX_TAB_CACHE_SIZE: 50,
 } as const;
 
 /**

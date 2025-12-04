@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Div Ping",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
-  "description": "监控页面中指定DIV元素的变化，支持浏览器通知和Webhook通知",
+  "description": "__MSG_extDescription__",
+  "default_locale": "zh_CN",
   "permissions": [
     "storage",
     "notifications",

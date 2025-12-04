@@ -40,6 +40,7 @@ const config = {
         { from: 'icons', to: 'icons' },
         { from: 'src/*.html', to: '[name][ext]' },
         { from: 'src/css', to: 'css' },
+        { from: '_locales', to: '_locales' },
         { from: 'LICENSE', to: 'LICENSE' },
         { from: 'README.md', to: 'README.md' }
       ]

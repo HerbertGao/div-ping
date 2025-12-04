@@ -1,85 +1,83 @@
-# Div Ping
+# div-ping
 
 ![CI](https://github.com/HerbertGao/div-ping/workflows/CI/badge.svg)
 
-监控网页中指定DOM元素的变化，通过浏览器通知或Webhook发送提醒。
+Monitor changes to specific DOM elements on web pages, with notifications via browser alerts or webhooks.
 
-## 功能特点
+## Features
 
-- 可视化元素选择（鼠标悬停高亮）
-- 多项目管理
-- 后台定期检测
-- 浏览器通知 + Webhook通知
-- 完整日志记录
-- 数据导入导出
+- Visual element selection (hover to highlight)
+- Multi-project management
+- Background periodic monitoring
+- Browser notifications + Webhook notifications
+- Complete logging system
+- Data import/export
 
-## 安装
+## Installation
 
-1. 打开Chrome浏览器，访问 `chrome://extensions/`
-2. 开启"开发者模式"
-3. 点击"加载已解压的扩展程序"
-4. 选择 `div-ping` 文件夹
+1. Open Chrome browser and navigate to `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked extension"
+4. Select the `div-ping` folder
 
-## 使用
+## Usage
 
-1. 打开要监控的网页
-2. 点击扩展图标
-3. 点击"选择元素"
-4. 选中要监控的元素
-5. 配置监控参数并保存
+1. Open the web page you want to monitor
+2. Click the extension icon
+3. Click "Select Element"
+4. Select the element to monitor
+5. Configure monitoring parameters and save
 
-## Webhook配置
+## Webhook Configuration
 
-支持的变量: `{{projectName}}`, `{{url}}`, `{{selector}}`, `{{oldContent}}`, `{{newContent}}`, `{{timestamp}}`
+Supported variables: `{{projectName}}`, `{{url}}`, `{{selector}}`, `{{oldContent}}`, `{{newContent}}`, `{{timestamp}}`
 
-### 示例
+### Examples
 
-**GET请求:**
+**GET Request:**
 
 ```text
 https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 ```
 
-**POST请求:**
+**POST Request:**
 
 ```json
 {
-  "text": "{{projectName}} 检测到变化: {{newContent}}"
+  "text": "{{projectName}} change detected: {{newContent}}"
 }
 ```
 
-### 注意事项
+### Important Notes
 
-- ⚠️ JSON模板中变量**不要**加引号：`{"msg": {{content}}}` ✓  `{"msg": "{{content}}"}`  ✗
-- ⚠️ 最小监控间隔：60秒（Chrome Alarms API限制）
-- ✅ 内置安全防护：SSRF保护、重定向拦截、header注入防护
+- ⚠️ Variables in JSON templates should **not** be quoted: `{"msg": {{content}}}` ✓  `{"msg": "{{content}}"}`  ✗
+- ⚠️ Minimum monitoring interval: 60 seconds (Chrome Alarms API limitation)
+- ✅ Built-in security: SSRF protection, redirect blocking, header injection prevention
 
-## 常见问题
+## FAQ
 
-**保存项目失败?** 在 `chrome://extensions/` 重新加载扩展
+**Project save failed?** Reload the extension at `chrome://extensions/`
 
-**监控不工作?** 检查刷新间隔和CSS选择器是否正确
+**Monitoring not working?** Check refresh interval and CSS selector validity
 
-**调试方法:** `chrome://extensions/` → Service Worker 查看日志
+**Debugging:** `chrome://extensions/` → Service Worker to view logs
 
-## 开发待办
+## Development TODO
 
-### 中优先级
+### Medium Priority
 
-- [ ] 改为动态权限请求 - 当前`<all_urls>`权限过大
-- [ ] 程序化注入content script - 避免在所有页面加载脚本
-- [ ] 添加Webhook速率限制 - 防止频繁触发
-- [ ] 实现输入验证 - 项目名称、选择器、间隔等
-- [ ] 添加错误重试机制 - 网络失败时自动重试
-- [ ] 优化waitForTabLoad实现 - 改为async/await模式避免递归回调
+- [ ] Dynamic permission requests - current `<all_urls>` permission is too broad
+- [ ] Programmatic content script injection - avoid loading scripts on all pages
+- [ ] Webhook rate limiting - prevent frequent triggering
+- [ ] Input validation - project name, selectors, intervals, etc.
+- [ ] Error retry mechanism - automatic retry on network failures
+- [ ] Optimize waitForTabLoad implementation - use async/await instead of recursive callbacks
 
-### 低优先级
+### Low Priority
 
-- [ ] 添加单元测试 - 特别是SSRF验证、变量替换等关键逻辑
-- [ ] 添加JSDoc文档注释 - 为公共API提供文档
-- [ ] 支持国际化(i18n) - 提高国际协作潜力
-- [ ] 添加内容长度限制 - 防止存储耗尽
+- [ ] Add JSDoc documentation - for public APIs
+- [ ] Content length limits - prevent storage exhaustion
 
-## 许可证
+## License
 
 MIT License

@@ -1,5 +1,6 @@
 import { Settings, ExportData } from './types';
 import { storageManager } from './storageManager';
+import { t, initI18nForHTML } from './i18n';
 
 // 设置页面逻辑
 class OptionsManager {
@@ -19,9 +20,11 @@ class OptionsManager {
   }
 
   private async init(): Promise<void> {
+    initI18nForHTML();
     await this.loadSettings();
     await this.loadStats();
     this.attachEventListeners();
+    this.updateVariablesList();
   }
 
   private async loadSettings(): Promise<void> {
@@ -47,6 +50,19 @@ class OptionsManager {
     this.getElement('pausedProjects').textContent = projects.filter(p => !p.active).length.toString();
   }
 
+  private updateVariablesList(): void {
+    const variablesList = this.getElement('variablesList');
+    if (variablesList) {
+      variablesList.textContent = `{{projectId}}      - ${t('variablesProjectId')}
+{{projectName}}    - ${t('variablesProjectName')}
+{{url}}            - ${t('variablesUrl')}
+{{selector}}       - ${t('variablesSelector')}
+{{oldContent}}     - ${t('variablesOldContent')}
+{{newContent}}     - ${t('variablesNewContent')}
+{{timestamp}}      - ${t('variablesTimestamp')}`;
+    }
+  }
+
   private async saveSettings(): Promise<void> {
     const settings: Settings = {
       defaultInterval: parseInt(this.getElement<HTMLInputElement>('defaultInterval').value),
@@ -60,14 +76,14 @@ class OptionsManager {
     };
 
     await storageManager.setSettings(settings);
-    this.showStatus('设置已保存', 'success');
+    this.showStatus(t('settingsSaved'), 'success');
   }
 
   private async resetSettings(): Promise<void> {
-    if (confirm('确定要恢复默认设置吗?')) {
+    if (confirm(t('dataClearedConfirm'))) {
       await storageManager.setSettings(this.defaultSettings);
       await this.loadSettings();
-      this.showStatus('已恢复默认设置', 'success');
+      this.showStatus(t('settingsReset'), 'success');
     }
   }
 
@@ -88,7 +104,7 @@ class OptionsManager {
     a.click();
     URL.revokeObjectURL(url);
 
-    this.showStatus('配置已导出', 'success');
+    this.showStatus(t('dataExported'), 'success');
   }
 
   private async importData(): Promise<void> {
@@ -102,16 +118,16 @@ class OptionsManager {
       const data: ExportData = JSON.parse(text);
 
       if (!data.version || !data.projects) {
-        throw new Error('无效的配置文件格式');
+        throw new Error(t('invalidFile'));
       }
 
-      if (confirm('导入配置将覆盖现有数据,确定继续吗?')) {
+      if (confirm(t('dataClearedConfirm'))) {
         await storageManager.setProjects(data.projects);
         await storageManager.setSettings(data.settings || this.defaultSettings);
 
         await this.loadSettings();
         await this.loadStats();
-        this.showStatus('配置已导入', 'success');
+        this.showStatus(t('dataImported'), 'success');
 
         // 重启所有活动监控
         data.projects.forEach(project => {
@@ -121,18 +137,18 @@ class OptionsManager {
         });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      this.showStatus('导入失败: ' + errorMessage, 'error');
+      const errorMessage = error instanceof Error ? error.message : t('error');
+      this.showStatus(t('invalidFile') + ': ' + errorMessage, 'error');
     }
   }
 
   private async clearData(): Promise<void> {
-    const confirmation = prompt('此操作将删除所有监控项目和设置。请输入"DELETE"确认:');
+    const confirmation = prompt(t('dataClearedConfirm'));
     if (confirmation === 'DELETE') {
       await chrome.storage.local.clear();
       await this.loadSettings();
       await this.loadStats();
-      this.showStatus('所有数据已清除', 'success');
+      this.showStatus(t('dataCleared'), 'success');
 
       // 停止所有监控
       chrome.runtime.sendMessage({ action: 'stopAllMonitors' });

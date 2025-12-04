@@ -1,0 +1,611 @@
+{
+  "extName": {
+    "message": "div-ping",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Monitor changes of specific DOM elements on web pages, with browser notifications and webhook support",
+    "description": "Extension description"
+  },
+
+  "appTitle": {
+    "message": "div-ping Monitor Projects"
+  },
+  "selectElement": {
+    "message": "Select Element"
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "noProjects": {
+    "message": "No monitoring projects"
+  },
+  "clickToStart": {
+    "message": "Click \"Select Element\" to start"
+  },
+  "running": {
+    "message": "Running"
+  },
+  "paused": {
+    "message": "Paused"
+  },
+  "page": {
+    "message": "Page"
+  },
+  "selector": {
+    "message": "Selector"
+  },
+  "refreshInterval": {
+    "message": "Refresh Interval"
+  },
+  "seconds": {
+    "message": "seconds"
+  },
+  "notificationMethod": {
+    "message": "Notification Method"
+  },
+  "none": {
+    "message": "None"
+  },
+  "pause": {
+    "message": "Pause"
+  },
+  "start": {
+    "message": "Start"
+  },
+  "edit": {
+    "message": "Edit"
+  },
+  "logs": {
+    "message": "Logs"
+  },
+  "delete": {
+    "message": "Delete"
+  },
+  "confirmDelete": {
+    "message": "Are you sure you want to delete this monitoring project?"
+  },
+  "browserNotification": {
+    "message": "Browser Notification"
+  },
+
+  "settingsTitle": {
+    "message": "div-ping Settings"
+  },
+  "settingsSubtitle": {
+    "message": "Configure default behavior and notification options"
+  },
+  "statistics": {
+    "message": "Statistics"
+  },
+  "totalProjects": {
+    "message": "Total Projects"
+  },
+  "activeProjects": {
+    "message": "Active Monitors"
+  },
+  "pausedProjects": {
+    "message": "Paused"
+  },
+  "defaultSettings": {
+    "message": "Default Settings"
+  },
+  "defaultInterval": {
+    "message": "Default Refresh Interval (seconds)"
+  },
+  "defaultIntervalHelp": {
+    "message": "Default refresh interval for new monitoring projects"
+  },
+  "defaultBrowserNotification": {
+    "message": "Enable browser notifications by default"
+  },
+  "defaultWebhook": {
+    "message": "Enable webhook notifications by default"
+  },
+  "webhookConfig": {
+    "message": "Webhook Configuration"
+  },
+  "supportedVariables": {
+    "message": "Supported Variables"
+  },
+  "variablesDescription": {
+    "message": "You can use the following variables in Webhook URL, headers, and body:"
+  },
+  "variablesProjectId": {
+    "message": "Project ID"
+  },
+  "variablesProjectName": {
+    "message": "Project Name"
+  },
+  "variablesUrl": {
+    "message": "Page URL"
+  },
+  "variablesSelector": {
+    "message": "CSS Selector"
+  },
+  "variablesOldContent": {
+    "message": "Old Content"
+  },
+  "variablesNewContent": {
+    "message": "New Content"
+  },
+  "variablesTimestamp": {
+    "message": "ISO Timestamp"
+  },
+  "exampleConfig": {
+    "message": "Example Configuration"
+  },
+  "getRequestExample": {
+    "message": "GET Request Example:"
+  },
+  "postRequestExample": {
+    "message": "POST Request Example:"
+  },
+  "customHeadersExample": {
+    "message": "Custom Headers Example:"
+  },
+  "defaultWebhookUrl": {
+    "message": "Default Webhook URL"
+  },
+  "defaultWebhookUrlHelp": {
+    "message": "Default Webhook URL for new monitoring projects"
+  },
+  "webhookTimeout": {
+    "message": "Webhook Request Timeout (seconds)"
+  },
+  "advancedOptions": {
+    "message": "Advanced Options"
+  },
+  "autoReload": {
+    "message": "Auto reload page (when URL changes)"
+  },
+  "soundNotification": {
+    "message": "Play notification sound"
+  },
+  "maxRetries": {
+    "message": "Max Retries (on check failure)"
+  },
+  "dataManagement": {
+    "message": "Data Management"
+  },
+  "exportData": {
+    "message": "Export Configuration"
+  },
+  "importData": {
+    "message": "Import Configuration"
+  },
+  "clearData": {
+    "message": "Clear All Data"
+  },
+  "saveSettings": {
+    "message": "Save Settings"
+  },
+  "resetDefault": {
+    "message": "Reset to Default"
+  },
+  "settingsSaved": {
+    "message": "Settings saved"
+  },
+  "settingsReset": {
+    "message": "Settings reset to default values"
+  },
+  "dataClearedConfirm": {
+    "message": "Are you sure you want to clear all data? This action cannot be undone!"
+  },
+  "dataCleared": {
+    "message": "All data cleared"
+  },
+  "dataExported": {
+    "message": "Configuration exported"
+  },
+  "dataImported": {
+    "message": "Configuration imported"
+  },
+  "invalidFile": {
+    "message": "Invalid configuration file"
+  },
+
+  "projectConfig": {
+    "message": "Monitor Project Configuration"
+  },
+  "projectName": {
+    "message": "Project Name"
+  },
+  "projectNamePlaceholder": {
+    "message": "e.g., Homepage News"
+  },
+  "selectedElement": {
+    "message": "Selected Element"
+  },
+  "currentContent": {
+    "message": "Current Content"
+  },
+  "intervalSeconds": {
+    "message": "Refresh Interval (seconds)"
+  },
+  "minInterval": {
+    "message": "Minimum 60 seconds"
+  },
+  "notificationSettings": {
+    "message": "Notification Settings"
+  },
+  "webhookMethod": {
+    "message": "Webhook Method"
+  },
+  "webhookUrl": {
+    "message": "Webhook URL"
+  },
+  "webhookUrlPlaceholder": {
+    "message": "https://example.com/webhook"
+  },
+  "webhookHeaders": {
+    "message": "Request Headers (JSON format, optional)"
+  },
+  "webhookHeadersPlaceholder": {
+    "message": "{\"Authorization\": \"Bearer token\"}"
+  },
+  "webhookBody": {
+    "message": "Request Body (for POST/PUT, optional)"
+  },
+  "webhookBodyPlaceholder": {
+    "message": "{\"text\": \"{{projectName}} change detected\"}"
+  },
+  "save": {
+    "message": "Save"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "projectNameRequired": {
+    "message": "Please enter project name"
+  },
+  "intervalInvalid": {
+    "message": "Refresh interval must be at least 60 seconds"
+  },
+  "webhookUrlRequired": {
+    "message": "Please enter Webhook URL"
+  },
+  "webhookHeadersInvalid": {
+    "message": "Invalid request headers format, must be valid JSON"
+  },
+  "webhookBodyInvalid": {
+    "message": "Invalid request body format, must be valid JSON"
+  },
+  "projectSaved": {
+    "message": "Project saved"
+  },
+  "projectSaveFailed": {
+    "message": "Project save failed"
+  },
+
+  "logsTitle": {
+    "message": "Monitor Logs"
+  },
+  "clearLogs": {
+    "message": "Clear"
+  },
+  "close": {
+    "message": "Close"
+  },
+  "noLogs": {
+    "message": "No logs"
+  },
+  "changeDetected": {
+    "message": "Change Detected"
+  },
+  "noChange": {
+    "message": "No Change"
+  },
+  "checkFailed": {
+    "message": "Failed"
+  },
+  "oldContent": {
+    "message": "Old Content"
+  },
+  "newContent": {
+    "message": "New Content"
+  },
+  "content": {
+    "message": "Content"
+  },
+  "error": {
+    "message": "Error"
+  },
+  "expand": {
+    "message": "Expand"
+  },
+  "collapse": {
+    "message": "Collapse"
+  },
+  "confirmClearLogs": {
+    "message": "Are you sure you want to clear all logs?"
+  },
+
+  "cannotStartSelection": {
+    "message": "Cannot start element selection on current page. Please refresh the page and try again."
+  },
+  "cannotOpenEditDialog": {
+    "message": "Cannot open edit dialog on current page. Please ensure the page has finished loading."
+  },
+  "getLogsFailed": {
+    "message": "Failed to get logs"
+  },
+
+  "changeNotificationTitle": {
+    "message": "$projectName$ change detected",
+    "placeholders": {
+      "projectName": {
+        "content": "$1",
+        "example": "Homepage News"
+      }
+    }
+  },
+  "changeNotificationMessage": {
+    "message": "New content: $newContent$",
+    "placeholders": {
+      "newContent": {
+        "content": "$1",
+        "example": "Latest news title"
+      }
+    }
+  },
+
+  "enableBrowserNotification": {
+    "message": "Enable browser notifications"
+  },
+  "test": {
+    "message": "Test"
+  },
+  "enableWebhook": {
+    "message": "Enable webhook notifications"
+  },
+  "sending": {
+    "message": "Sending..."
+  },
+  "minIntervalWarning": {
+    "message": "⚠️ Minimum interval is $seconds$ seconds (Chrome extension Alarms API limit)",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "60"
+      }
+    }
+  },
+  "communicationFailed": {
+    "message": "❌ Communication failed\n\nError: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Connection refused"
+      }
+    }
+  },
+  "notificationTestFailed": {
+    "message": "❌ Test notification failed\n\n$error$\n\nPlease check browser notification permissions",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Permission denied"
+      }
+    }
+  },
+  "webhookUrlEmpty": {
+    "message": "Please enter Webhook URL first"
+  },
+  "webhookHeadersError": {
+    "message": "Request headers JSON format error: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Unexpected token"
+      }
+    }
+  },
+  "webhookBodyError": {
+    "message": "Request body JSON format error: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Unexpected token"
+      }
+    }
+  },
+  "webhookTestSuccess": {
+    "message": "✓ Test successful!\n\nStatus code: $status$ $statusText$\n\nWebhook server received the request successfully",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "200"
+      },
+      "statusText": {
+        "content": "$2",
+        "example": "OK"
+      }
+    }
+  },
+  "webhookTestWarning": {
+    "message": "⚠ Webhook request sent, but returned non-success status\n\nStatus code: $status$ $statusText$\n\nPossible reasons:\n- Request data format doesn't match server requirements\n- Authentication error\n- Server configuration issue\n\nPlease check Webhook server logs for details",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "400"
+      },
+      "statusText": {
+        "content": "$2",
+        "example": "Bad Request"
+      }
+    }
+  },
+  "webhookTestFailed": {
+    "message": "❌ Test failed\n\nError: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Network error"
+      }
+    }
+  },
+  "intervalTooSmall": {
+    "message": "⚠️ Refresh interval cannot be less than $minSeconds$ seconds\n\nChrome extension Alarms API requires a minimum interval of 1 minute ($minSeconds$ seconds).\n\nIf you need more frequent monitoring, please consider other monitoring solutions.",
+    "placeholders": {
+      "minSeconds": {
+        "content": "$1",
+        "example": "60"
+      }
+    }
+  },
+  "saveFailed": {
+    "message": "Save failed: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Storage error"
+      }
+    }
+  },
+  "projectUpdated": {
+    "message": "✓ Monitor project updated!"
+  },
+  "projectCreated": {
+    "message": "✓ Monitor project created!"
+  },
+  "monitorPrefix": {
+    "message": "Monitor-"
+  },
+  "webhookVariablesHelp": {
+    "message": "Supported variables: {{projectName}}, {{url}}, {{selector}}, {{oldContent}}, {{newContent}}, {{timestamp}}"
+  },
+  "webhookBodyHelp": {
+    "message": "Leave empty to use default format"
+  },
+  "currentContentPreview": {
+    "message": "Current Content Preview:"
+  },
+  "unknownError": {
+    "message": "Unknown error"
+  },
+  "testNotificationTitle": {
+    "message": "div-ping - Test Notification"
+  },
+  "testNotificationMessage": {
+    "message": "This is a test notification\n\nIf you see this message, browser notifications are configured correctly!"
+  },
+  "changeNotificationTitleShort": {
+    "message": "div-ping - Element Change Detected"
+  },
+  "changeNotificationBody": {
+    "message": "Element content has changed!\n\nProject: $projectName$\nPage: $url$",
+    "placeholders": {
+      "projectName": {
+        "content": "$1",
+        "example": "Homepage News"
+      },
+      "url": {
+        "content": "$2",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "ssrfHttpOnly": {
+    "message": "Only HTTP and HTTPS protocols are supported"
+  },
+  "ssrfHttpWarning": {
+    "message": "Warning: Webhook uses HTTP protocol, HTTPS is recommended"
+  },
+  "ssrfLocalhostBlocked": {
+    "message": "Access to localhost is blocked"
+  },
+  "ssrfInternalDomainBlocked": {
+    "message": "Access to internal domains is blocked"
+  },
+  "ssrfIpRangeBlocked": {
+    "message": "Access to $range$ IP address range is blocked",
+    "placeholders": {
+      "range": {
+        "content": "$1",
+        "example": "private"
+      }
+    }
+  },
+  "ssrfIetfAddressBlocked": {
+    "message": "Access to IETF protocol assigned address space is blocked"
+  },
+  "ssrfTestNetworkBlocked": {
+    "message": "Access to test network addresses is blocked"
+  },
+  "ssrfBenchmarkBlocked": {
+    "message": "Access to benchmark address space is blocked"
+  },
+  "ssrfIpv4MappedBlocked": {
+    "message": "IPv4-mapped addresses to $range$ range are blocked",
+    "placeholders": {
+      "range": {
+        "content": "$1",
+        "example": "private"
+      }
+    }
+  },
+  "invalidUrlFormat": {
+    "message": "Invalid URL format"
+  },
+  "webhookUrlValidationFailed": {
+    "message": "Webhook URL validation failed:"
+  },
+  "webhookUrlValidationFailedWithError": {
+    "message": "Webhook URL validation failed: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Access to localhost is blocked"
+      }
+    }
+  },
+  "webhookUrlAfterSubstitutionFailed": {
+    "message": "URL validation failed after variable substitution:"
+  },
+  "webhookUrlAfterSubstitutionFailedWithError": {
+    "message": "URL validation failed after variable substitution: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Access to localhost is blocked"
+      }
+    }
+  },
+  "webhookBodyJsonError": {
+    "message": "Webhook body JSON format error or variable substitution failed: "
+  },
+  "webhookRedirectBlocked": {
+    "message": "Webhook redirects are not allowed. If you need to access the redirect target, please configure the target URL directly.$location$",
+    "placeholders": {
+      "location": {
+        "content": "$1",
+        "example": " (Redirect target: https://example.com)"
+      }
+    }
+  },
+  "redirectTarget": {
+    "message": "Redirect target"
+  },
+  "webhookTimeout": {
+    "message": "Webhook request timeout ($seconds$ seconds)",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
+  "testProjectName": {
+    "message": "Test Project"
+  },
+  "testOldContent": {
+    "message": "Old content example"
+  },
+  "testNewContent": {
+    "message": "New content example"
+  },
+  "requestBodyJsonError": {
+    "message": "Request body JSON format error or variable substitution failed: "
+  }
+}

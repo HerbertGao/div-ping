@@ -1,7 +1,9 @@
 import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse } from './types';
 import * as ipaddr from 'ipaddr.js';
 import { storageManager } from './storageManager';
-import { TIMEOUTS } from './constants';
+import { TIMEOUTS, LIMITS } from './constants';
+import { t } from './i18n';
+import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody } from './validation';
 
 // 监控信息接口（不再需要 intervalId）
 interface MonitorInfo {
@@ -53,10 +55,23 @@ class MonitorManager {
             break;
           }
         }
-        // 添加新URL的缓存
-        this.tabCache.set(changeInfo.url, tabId);
+        // 添加新URL的缓存，但先检查缓存大小限制
+        this.addToTabCache(changeInfo.url, tabId);
       }
     });
+  }
+
+  // 添加标签页到缓存，强制执行大小限制
+  private addToTabCache(url: string, tabId: number): void {
+    // 如果缓存已满，移除最旧的条目（FIFO策略）
+    if (this.tabCache.size >= LIMITS.MAX_TAB_CACHE_SIZE) {
+      const firstKey = this.tabCache.keys().next().value;
+      if (firstKey) {
+        console.log(`Tab cache full, removing oldest entry: ${firstKey}`);
+        this.tabCache.delete(firstKey);
+      }
+    }
+    this.tabCache.set(url, tabId);
   }
 
   // 验证Webhook URL安全性（防止SSRF攻击）
@@ -66,12 +81,12 @@ class MonitorManager {
 
       // 只允许HTTP和HTTPS协议
       if (!['http:', 'https:'].includes(url.protocol)) {
-        throw new Error('只支持 HTTP 和 HTTPS 协议');
+        throw new Error(t('ssrfHttpOnly'));
       }
 
       // 警告非HTTPS URL
       if (url.protocol === 'http:') {
-        console.warn('警告: Webhook使用HTTP协议，建议使用HTTPS');
+        console.warn(t('ssrfHttpWarning'));
       }
 
       // 获取hostname
@@ -79,12 +94,12 @@ class MonitorManager {
 
       // 禁止特定的localhost主机名
       if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-        throw new Error('禁止访问本地地址');
+        throw new Error(t('ssrfLocalhostBlocked'));
       }
 
       // 禁止内网域名后缀
       if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-        throw new Error('禁止访问内网域名');
+        throw new Error(t('ssrfInternalDomainBlocked'));
       }
 
       // 尝试解析为IP地址
@@ -108,7 +123,7 @@ class MonitorManager {
         ];
 
         if (forbiddenRanges.includes(range)) {
-          throw new Error(`禁止访问${range}类型的IP地址`);
+          throw new Error(t('ssrfIpRangeBlocked', [range]));
         }
 
         // IPv4特殊检查：测试网络和基准测试网络
@@ -117,27 +132,27 @@ class MonitorManager {
 
           // 192.0.0.0/24 (IETF协议分配)
           if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 0) {
-            throw new Error('禁止访问IETF协议分配地址段');
+            throw new Error(t('ssrfIetfAddressBlocked'));
           }
 
           // 192.0.2.0/24 (TEST-NET-1)
           if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 2) {
-            throw new Error('禁止访问测试网络地址');
+            throw new Error(t('ssrfTestNetworkBlocked'));
           }
 
           // 198.18.0.0/15 (基准测试)
           if (bytes[0] === 198 && (bytes[1] === 18 || bytes[1] === 19)) {
-            throw new Error('禁止访问基准测试地址段');
+            throw new Error(t('ssrfBenchmarkBlocked'));
           }
 
           // 198.51.100.0/24 (TEST-NET-2)
           if (bytes[0] === 198 && bytes[1] === 51 && bytes[2] === 100) {
-            throw new Error('禁止访问测试网络地址');
+            throw new Error(t('ssrfTestNetworkBlocked'));
           }
 
           // 203.0.113.0/24 (TEST-NET-3)
           if (bytes[0] === 203 && bytes[1] === 0 && bytes[2] === 113) {
-            throw new Error('禁止访问测试网络地址');
+            throw new Error(t('ssrfTestNetworkBlocked'));
           }
         }
 
@@ -150,7 +165,7 @@ class MonitorManager {
             const ipv4Range = ipv4.range();
 
             if (forbiddenRanges.includes(ipv4Range)) {
-              throw new Error(`禁止使用映射到${ipv4Range}类型的IPv4地址`);
+              throw new Error(t('ssrfIpv4MappedBlocked', [ipv4Range]));
             }
           }
         }
@@ -159,7 +174,7 @@ class MonitorManager {
       return true;
     } catch (error) {
       if (error instanceof TypeError) {
-        throw new Error('无效的URL格式');
+        throw new Error(t('invalidUrlFormat'));
       }
       throw error;
     }
@@ -236,12 +251,48 @@ class MonitorManager {
             break;
           }
 
+          // Validate inputs
+          const projectName = message.name || `${t('monitorPrefix')}${new Date().toLocaleString()}`;
+          const nameValidation = validateProjectName(projectName);
+          if (!nameValidation.valid) {
+            sendResponse({ success: false, error: nameValidation.error });
+            break;
+          }
+
+          const urlValidation = validateUrl(message.url);
+          if (!urlValidation.valid) {
+            sendResponse({ success: false, error: urlValidation.error });
+            break;
+          }
+
+          const selectorValidation = validateSelector(message.selector);
+          if (!selectorValidation.valid) {
+            sendResponse({ success: false, error: selectorValidation.error });
+            break;
+          }
+
+          const interval = message.interval || 30000;
+          const intervalValidation = validateInterval(interval);
+          if (!intervalValidation.valid) {
+            sendResponse({ success: false, error: intervalValidation.error });
+            break;
+          }
+
+          // Validate webhook body if present
+          if (message.webhook?.enabled && message.webhook.body) {
+            const bodyValidation = validateWebhookBody(message.webhook.body);
+            if (!bodyValidation.valid) {
+              sendResponse({ success: false, error: bodyValidation.error });
+              break;
+            }
+          }
+
           const project: Project = {
             id: Date.now().toString(),
-            name: message.name || `监控-${new Date().toLocaleString()}`,
+            name: projectName,
             url: message.url,
             selector: message.selector,
-            interval: message.interval || 30000,
+            interval: interval,
             active: true,
             browserNotification: message.browserNotification !== false,
             webhook: message.webhook || { enabled: false },
@@ -301,8 +352,8 @@ class MonitorManager {
             {
               type: 'basic',
               iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-              title: 'Div Ping - 测试通知',
-              message: '这是一条测试通知\n\n如果你看到这条消息，说明浏览器通知配置正常！',
+              title: t('testNotificationTitle'),
+              message: t('testNotificationMessage'),
               priority: 2
             },
             (notificationId) => {
@@ -402,8 +453,9 @@ class MonitorManager {
           // 缓存失效，清理
           this.tabCache.delete(url);
         }
-      } catch {
+      } catch (error) {
         // 标签页已不存在，清理缓存
+        console.warn(`Tab ${cachedTabId} no longer exists:`, error);
         this.tabCache.delete(url);
       }
     }
@@ -414,7 +466,7 @@ class MonitorManager {
       const tab = existingTabs[0];
       console.log(`Found existing tab ${tab.id} for URL: ${url}`);
       // 更新缓存
-      this.tabCache.set(url, tab.id!);
+      this.addToTabCache(url, tab.id!);
       return tab;
     }
 
@@ -427,7 +479,7 @@ class MonitorManager {
     });
 
     // 添加到缓存
-    this.tabCache.set(url, newTab.id!);
+    this.addToTabCache(url, newTab.id!);
 
     return newTab;
   }
@@ -534,29 +586,27 @@ class MonitorManager {
   }
 
   private async waitForTabLoad(tabId: number, timeout: number = TIMEOUTS.TAB_LOAD): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const startTime = Date.now();
+    const startTime = Date.now();
 
-      const checkStatus = (): void => {
-        chrome.tabs.get(tabId, (tab) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error('Tab not found'));
-            return;
-          }
+    // Poll tab status with async/await instead of recursive callbacks
+    while (Date.now() - startTime < timeout) {
+      try {
+        const tab = await chrome.tabs.get(tabId);
 
-          if (tab.status === 'complete') {
-            // 等待额外时间确保content script已加载
-            setTimeout(() => resolve(), TIMEOUTS.TAB_LOAD_EXTRA_DELAY);
-          } else if (Date.now() - startTime > timeout) {
-            reject(new Error('Timeout waiting for tab to load'));
-          } else {
-            setTimeout(checkStatus, TIMEOUTS.TAB_STATUS_CHECK);
-          }
-        });
-      };
+        if (tab.status === 'complete') {
+          // Wait extra time to ensure content script is loaded
+          await new Promise(resolve => setTimeout(resolve, TIMEOUTS.TAB_LOAD_EXTRA_DELAY));
+          return;
+        }
 
-      checkStatus();
-    });
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, TIMEOUTS.TAB_STATUS_CHECK));
+      } catch {
+        throw new Error('Tab not found');
+      }
+    }
+
+    throw new Error('Timeout waiting for tab to load');
   }
 
   private async updateProjectContent(projectId: string, content: string): Promise<void> {
@@ -579,7 +629,7 @@ class MonitorManager {
   }
 
   private async notifyChange(project: Project, oldContent: string, newContent: string): Promise<void> {
-    const message = `元素内容已变化!\n\n项目: ${project.name}\n页面: ${project.url}`;
+    const message = t('changeNotificationBody', [project.name, project.url]);
 
     // 浏览器通知
     if (project.browserNotification) {
@@ -587,7 +637,7 @@ class MonitorManager {
         {
           type: 'basic',
           iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-          title: 'Div Ping - 元素变化检测',
+          title: t('changeNotificationTitleShort'),
           message: message,
           priority: 2
         },
@@ -671,8 +721,8 @@ class MonitorManager {
     try {
       this.validateWebhookUrl(webhook.url);
     } catch (error) {
-      console.error('Webhook URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(`Webhook URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(t('webhookUrlValidationFailed'), error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(t('webhookUrlValidationFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
     // 可用变量
@@ -693,8 +743,8 @@ class MonitorManager {
     try {
       this.validateWebhookUrl(url);
     } catch (error) {
-      console.error('替换变量后的URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(`替换变量后的URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(t('webhookUrlAfterSubstitutionFailed'), error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
     // 准备请求配置
@@ -740,7 +790,7 @@ class MonitorManager {
           fetchOptions.body = JSON.stringify(bodyContent);
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
-          throw new Error('Webhook body JSON格式错误或变量替换失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+          throw new Error(t('webhookBodyJsonError') + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
       // 如果webhook.body为空，则不设置body
@@ -760,7 +810,7 @@ class MonitorManager {
       // 检查是否为重定向响应（SSRF保护）
       if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
         const redirectLocation = response.headers.get('location');
-        throw new Error(`Webhook不允许重定向。如需访问重定向后的地址，请直接配置目标URL。${redirectLocation ? ` (重定向目标: ${redirectLocation})` : ''}`);
+        throw new Error(t('webhookRedirectBlocked', [redirectLocation ? ` (${t('redirectTarget')}: ${redirectLocation})` : '']));
       }
 
       if (!response.ok) {
@@ -771,7 +821,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error(`Webhook请求超时（${TIMEOUTS.WEBHOOK_REQUEST / 1000}秒）`);
+        throw new Error(t('webhookTimeout', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
       }
       throw error;
     }
@@ -789,18 +839,18 @@ class MonitorManager {
     try {
       this.validateWebhookUrl(config.url);
     } catch (error) {
-      console.error('Webhook URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(`Webhook URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(t('webhookUrlValidationFailed'), error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(t('webhookUrlValidationFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
     // 测试用变量
     const variables: WebhookVariables = {
       projectId: 'test-project-id',
-      projectName: '测试项目',
+      projectName: t('testProjectName'),
       url: 'https://example.com',
       selector: '.test-selector',
-      oldContent: '旧内容示例',
-      newContent: '新内容示例',
+      oldContent: t('testOldContent'),
+      newContent: t('testNewContent'),
       timestamp: timestamp
     };
 
@@ -811,8 +861,8 @@ class MonitorManager {
     try {
       this.validateWebhookUrl(url);
     } catch (error) {
-      console.error('替换变量后的URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(`替换变量后的URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(t('webhookUrlAfterSubstitutionFailed'), error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
     // 准备请求配置
@@ -858,7 +908,7 @@ class MonitorManager {
           fetchOptions.body = JSON.stringify(bodyContent);
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
-          throw new Error('请求体JSON格式错误或变量替换失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
+          throw new Error(t('requestBodyJsonError') + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
       // 如果config.body为空，则不设置body
@@ -878,7 +928,7 @@ class MonitorManager {
       // 检查是否为重定向响应（SSRF保护）
       if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
         const redirectLocation = response.headers.get('location');
-        throw new Error(`Webhook不允许重定向。如需访问重定向后的地址，请直接配置目标URL。${redirectLocation ? ` (重定向目标: ${redirectLocation})` : ''}`);
+        throw new Error(t('webhookRedirectBlocked', [redirectLocation ? ` (${t('redirectTarget')}: ${redirectLocation})` : '']));
       }
 
       // 返回响应（无论成功还是失败，让调用方处理）
@@ -886,7 +936,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error(`Webhook请求超时（${TIMEOUTS.WEBHOOK_REQUEST / 1000}秒）`);
+        throw new Error(t('webhookTimeout', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
       }
       throw error;
     }
@@ -922,5 +972,5 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 // 安装时请求通知权限
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Div Ping extension installed');
+  console.log('div-ping extension installed');
 });
