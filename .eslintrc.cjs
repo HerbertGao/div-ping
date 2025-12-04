@@ -4,7 +4,7 @@ module.exports = {
     ecmaVersion: 2020,
     sourceType: 'module',
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'local-rules'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -22,5 +22,4 @@ module.exports = {
     es2020: true,
     webextensions: true,
   },
-  plugins: ['@typescript-eslint', 'local-rules'],
 };
