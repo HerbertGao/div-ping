@@ -156,15 +156,24 @@ class ProjectManager {
     // 如果没有找到对应的标签页，尝试打开一个新的
     if (!targetTab) {
       targetTab = await chrome.tabs.create({ url: project.url, active: true });
-      // 等待页面加载
-      await new Promise<void>((resolve) => {
+      // 等待页面加载，设置超时避免永久等待
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener);
+          reject(new Error('Tab load timeout'));
+        }, 30000); // 30秒超时
+
         const listener = (tabId: number, info: { status?: string }) => {
           if (tabId === targetTab!.id && info.status === 'complete') {
+            clearTimeout(timeout);
             chrome.tabs.onUpdated.removeListener(listener);
             resolve();
           }
         };
         chrome.tabs.onUpdated.addListener(listener);
+      }).catch((error) => {
+        console.warn('Tab load timeout:', error);
+        // 即使超时也继续执行，可能页面已经部分加载
       });
     } else {
       // 切换到该标签页
@@ -253,6 +262,13 @@ class ProjectManager {
 
     // 定时刷新日志数据 - 增量更新
     const refreshLogs = async (): Promise<void> => {
+      // 安全检查：如果dialog已被移除，停止刷新
+      if (!document.body.contains(dialog)) {
+        clearInterval(refreshInterval);
+        observer.disconnect();
+        return;
+      }
+
       const response: MessageResponse = await chrome.runtime.sendMessage({
         action: 'getProjectLogs',
         projectId
