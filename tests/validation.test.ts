@@ -5,6 +5,7 @@ import {
   validateSelector,
   validateInterval,
   validateWebhookBody,
+  validateWebhookHeaders,
 } from '../src/ts/validation';
 import { LIMITS } from '../src/ts/constants';
 
@@ -187,6 +188,157 @@ describe('Validation Module', () => {
       const result = validateWebhookBody(largeObject);
       expect(result.valid).toBe(false);
       expect(result.error).toContain('exceeds maximum');
+    });
+  });
+
+  describe('validateWebhookHeaders()', () => {
+    describe('Valid headers', () => {
+      it('should accept valid header object', () => {
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer token123',
+        };
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
+
+      it('should accept valid header JSON string', () => {
+        const headers = '{"Content-Type": "application/json"}';
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
+
+      it('should accept headers with special allowed characters', () => {
+        const headers = {
+          'X-Custom-Header': 'value',
+          'X-Test_Header': 'test',
+          'X-Header-123': 'value',
+        };
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
+
+      it('should accept empty headers object', () => {
+        expect(validateWebhookHeaders({})).toEqual({ valid: true });
+      });
+    });
+
+    describe('Invalid header names (RFC 7230 validation)', () => {
+      it('should reject headers with spaces in name', () => {
+        const headers = { 'Invalid Header': 'value' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Invalid header name');
+      });
+
+      it('should reject headers with colons in name', () => {
+        const headers = { 'Invalid:Header': 'value' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Invalid header name');
+      });
+
+      it('should reject headers with brackets in name', () => {
+        const headers = { 'Invalid[Header]': 'value' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Invalid header name');
+      });
+    });
+
+    describe('Invalid header values (Control character prevention)', () => {
+      it('should reject headers with CRLF (header injection attack)', () => {
+        const headers = { 'X-Custom': 'value\r\nX-Injected: malicious' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('contains control characters');
+      });
+
+      it('should reject headers with newline characters', () => {
+        const headers = { 'X-Custom': 'value\ninjected' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('contains control characters');
+      });
+
+      it('should reject headers with null bytes', () => {
+        const headers = { 'X-Custom': 'value\x00injected' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('contains control characters');
+      });
+
+      it('should reject headers with other control characters', () => {
+        const headers = { 'X-Custom': 'value\x01\x02\x03' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('contains control characters');
+      });
+
+      it('should reject headers with DEL character', () => {
+        const headers = { 'X-Custom': 'value\x7F' };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('contains control characters');
+      });
+    });
+
+    describe('Size validation', () => {
+      it('should reject headers exceeding size limit', () => {
+        const largeValue = 'x'.repeat(LIMITS.MAX_WEBHOOK_HEADERS_SIZE);
+        const headers = { 'X-Large': largeValue };
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('exceeds maximum');
+      });
+
+      it('should accept headers at size limit', () => {
+        // Create headers that are just under the limit
+        const value = 'x'.repeat(Math.floor(LIMITS.MAX_WEBHOOK_HEADERS_SIZE / 2) - 50);
+        const headers = { 'X-Test': value };
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
+    });
+
+    describe('Invalid formats', () => {
+      it('should reject invalid JSON string', () => {
+        const headers = '{invalid json}';
+        const result = validateWebhookHeaders(headers);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Invalid headers format');
+      });
+
+      it('should reject non-object types', () => {
+        const result = validateWebhookHeaders('null');
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Headers must be an object');
+      });
+
+      it('should reject array', () => {
+        const result = validateWebhookHeaders('[]');
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Headers must be an object');
+      });
+    });
+
+    describe('Unicode and special values', () => {
+      it('should accept headers with Unicode values (non-control)', () => {
+        const headers = {
+          'X-Message': '测试中文 Test 日本語',
+        };
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
+
+      it('should accept headers with emoji values', () => {
+        const headers = {
+          'X-Message': 'Hello 👋 World 🌍',
+        };
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
+
+      it('should accept headers with numeric values', () => {
+        const headers = {
+          'X-Count': '12345',
+        };
+        expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
+      });
     });
   });
 });

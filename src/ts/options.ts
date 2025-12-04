@@ -186,8 +186,11 @@ class OptionsManager {
     this.getElement<HTMLInputElement>('importFile').addEventListener('change', (e) => {
       const target = e.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
-        this.handleImportFile(target.files[0]);
-        target.value = ''; // 重置文件输入
+        const file = target.files[0];
+        if (file) {
+          this.handleImportFile(file);
+          target.value = ''; // 重置文件输入
+        }
       }
     });
 

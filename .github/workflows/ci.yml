@@ -61,6 +61,22 @@ jobs:
           fi
           echo "All required files built successfully"
 
+      - name: Analyze bundle size
+        run: |
+          echo "=== Bundle Size Analysis ==="
+          echo ""
+          echo "Total distribution size:"
+          du -sh dist/
+          echo ""
+          echo "JavaScript bundle sizes:"
+          du -sh dist/js/*.js | sort -h
+          echo ""
+          echo "Detailed breakdown:"
+          ls -lh dist/js/*.js
+          echo ""
+          echo "Extension package contents:"
+          find dist -type f -exec ls -lh {} \; | awk '{print $5, $9}' | sort -k2
+
       - name: Upload build artifacts
         if: matrix.node-version == '20.x'
         uses: actions/upload-artifact@v4

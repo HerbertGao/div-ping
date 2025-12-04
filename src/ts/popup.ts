@@ -441,8 +441,13 @@ if (selectElementBtn) {
   selectElementBtn.addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
+    if (!tab || !tab.id) {
+      alert(t('cannotStartSelection'));
+      return;
+    }
+
     // 注入选择器脚本
-    chrome.tabs.sendMessage(tab.id!, { action: 'startSelection' }, () => {
+    chrome.tabs.sendMessage(tab.id, { action: 'startSelection' }, () => {
       if (chrome.runtime.lastError) {
         alert(t('cannotStartSelection'));
       } else {

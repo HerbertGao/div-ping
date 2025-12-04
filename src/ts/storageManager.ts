@@ -50,6 +50,7 @@ class StorageManager {
 
   /**
    * Update a single project atomically
+   * Returns the project state BEFORE the update (useful for detecting changes)
    */
   async updateProject(projectId: string, updates: Partial<Project>): Promise<Project | null> {
     return this.executeWithLock(async () => {
@@ -60,11 +61,19 @@ class StorageManager {
       const index = projects.findIndex(p => p.id === projectId);
       if (index === -1) return null;
 
+      const currentProject = projects[index];
+      if (!currentProject) return null;
+
+      // Save the old state before applying updates
+      const previousState = { ...currentProject };
+
       // Apply updates
-      projects[index] = { ...projects[index], ...updates };
+      projects[index] = { ...currentProject, ...updates };
 
       await chrome.storage.local.set({ projects });
-      return projects[index];
+
+      // Return the state BEFORE the update
+      return previousState;
     });
   }
 

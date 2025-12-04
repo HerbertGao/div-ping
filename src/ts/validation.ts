@@ -105,6 +105,47 @@ export function validateUrl(url: string): ValidationResult {
 }
 
 /**
+ * Validate webhook headers
+ * Validates header names and values according to RFC 7230
+ */
+export function validateWebhookHeaders(headers: string | Record<string, string>): ValidationResult {
+  try {
+    const headerObj = typeof headers === 'string' ? JSON.parse(headers) : headers;
+
+    if (typeof headerObj !== 'object' || headerObj === null || Array.isArray(headerObj)) {
+      return { valid: false, error: 'Headers must be an object' };
+    }
+
+    for (const [key, value] of Object.entries(headerObj)) {
+      // Validate header name (RFC 7230: token characters)
+      if (!/^[!#$%&'*+\-.0-9A-Z^_`a-z|~]+$/.test(key)) {
+        return { valid: false, error: `Invalid header name: ${key}` };
+      }
+
+      // Validate header value (no control characters, especially CRLF for header injection prevention)
+      // eslint-disable-next-line no-control-regex -- Intentionally matching control characters for security (header injection prevention)
+      if (/[\r\n\x00-\x1F\x7F]/.test(String(value))) {
+        return { valid: false, error: `Invalid header value for ${key}: contains control characters` };
+      }
+    }
+
+    // Validate total headers size
+    const headersString = JSON.stringify(headerObj);
+    const headersSize = new Blob([headersString]).size;
+    if (headersSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
+      return {
+        valid: false,
+        error: `Webhook headers size (${headersSize} bytes) exceeds maximum ${LIMITS.MAX_WEBHOOK_HEADERS_SIZE} bytes`
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: `Invalid headers format: ${error instanceof Error ? error.message : 'Unknown error'}` };
+  }
+}
+
+/**
  * Validate webhook body size
  */
 export function validateWebhookBody(body: string | Record<string, unknown>): ValidationResult {

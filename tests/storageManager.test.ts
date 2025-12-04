@@ -147,7 +147,9 @@ describe('StorageManager', () => {
       const updates = { name: 'Updated', interval: 120000 };
       const result = await storageManager.updateProject('1', updates);
 
-      expect(result).toEqual({ ...project, ...updates });
+      // updateProject returns the state BEFORE the update
+      expect(result).toEqual(project);
+      // But storage should have the updated values
       expect(mockSet).toHaveBeenCalledWith({ projects: [{ ...project, ...updates }] });
     });
 
@@ -283,7 +285,8 @@ describe('StorageManager', () => {
 
         await storageManager.addLog('project1', newLog);
 
-        const savedLogs = (mockSet.mock.calls[0][0] as any).logs.project1;
+        const savedLogs = (mockSet.mock.calls[0]?.[0] as any)?.logs?.project1;
+        expect(savedLogs).toBeDefined();
         expect(savedLogs.length).toBe(100); // Should not exceed limit
         expect(savedLogs[0]).toEqual(newLog); // New log should be first
         expect(savedLogs[savedLogs.length - 1]).not.toEqual(existingLogs[existingLogs.length - 1]); // Oldest should be removed

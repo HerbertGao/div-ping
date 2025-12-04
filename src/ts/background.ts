@@ -3,7 +3,7 @@ import * as ipaddr from 'ipaddr.js';
 import { storageManager } from './storageManager';
 import { TIMEOUTS, LIMITS } from './constants';
 import { t } from './i18n';
-import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody } from './validation';
+import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody, validateWebhookHeaders } from './validation';
 
 // 监控信息接口（不再需要 intervalId）
 interface MonitorInfo {
@@ -284,12 +284,21 @@ class MonitorManager {
             break;
           }
 
-          // Validate webhook body if present
-          if (message.webhook?.enabled && message.webhook.body) {
-            const bodyValidation = validateWebhookBody(message.webhook.body);
-            if (!bodyValidation.valid) {
-              sendResponse({ success: false, error: bodyValidation.error });
-              break;
+          // Validate webhook configuration if present
+          if (message.webhook?.enabled) {
+            if (message.webhook.body) {
+              const bodyValidation = validateWebhookBody(message.webhook.body);
+              if (!bodyValidation.valid) {
+                sendResponse({ success: false, error: bodyValidation.error });
+                break;
+              }
+            }
+            if (message.webhook.headers) {
+              const headersValidation = validateWebhookHeaders(message.webhook.headers);
+              if (!headersValidation.valid) {
+                sendResponse({ success: false, error: headersValidation.error });
+                break;
+              }
             }
           }
 
@@ -470,10 +479,12 @@ class MonitorManager {
     const existingTabs = await chrome.tabs.query({ url });
     if (existingTabs.length > 0) {
       const tab = existingTabs[0];
-      console.log(`Found existing tab ${tab.id} for URL: ${url}`);
-      // 更新缓存
-      this.addToTabCache(url, tab.id!);
-      return { tab, isNewlyCreated: false };
+      if (tab && tab.id) {
+        console.log(`Found existing tab ${tab.id} for URL: ${url}`);
+        // 更新缓存
+        this.addToTabCache(url, tab.id);
+        return { tab, isNewlyCreated: false };
+      }
     }
 
     // 3. 创建新标签页（后台打开）
@@ -516,24 +527,27 @@ class MonitorManager {
 
         console.log(`[${project.name}] Content retrieved, length: ${newContent.length}`);
 
-        // 从storage重新读取最新的项目配置，确保使用最新的lastContent和通知设置
-        const projects = await storageManager.getProjects();
-        const latestProject = projects.find(p => p.id === project.id);
+        // 使用原子性更新来防止竞态条件
+        // 先更新内容，updateProject 会返回更新前的项目状态
+        const updatedProject = await storageManager.updateProject(project.id, {
+          lastContent: newContent,
+          lastChecked: new Date().toISOString()
+        });
 
-        // 使用最新的lastContent进行比较
-        const currentLastContent = latestProject ? latestProject.lastContent : project.lastContent;
+        if (!updatedProject) {
+          console.error(`[${project.name}] Project not found during update`);
+          return;
+        }
+
+        // 使用更新前的 lastContent 进行比较
+        const currentLastContent = updatedProject.lastContent;
 
         // 检查内容是否变化（基于上一次的内容）
         const hasChanged = currentLastContent && newContent !== currentLastContent;
 
         if (hasChanged) {
           console.log(`[${project.name}] Content changed!`);
-
-          if (latestProject) {
-            this.notifyChange(latestProject, currentLastContent!, newContent);
-          } else {
-            this.notifyChange(project, currentLastContent!, newContent);
-          }
+          this.notifyChange(updatedProject, currentLastContent!, newContent);
         } else {
           console.log(`[${project.name}] No change detected`);
         }
@@ -546,9 +560,6 @@ class MonitorManager {
           changed: hasChanged || false,
           success: true
         });
-
-        // 更新最后内容为当前检测到的内容
-        await this.updateProjectContent(project.id, newContent);
       } else {
         console.error(`[${project.name}] Failed to check element: ${response.error}`);
 
@@ -573,10 +584,14 @@ class MonitorManager {
       if (isNewlyCreatedTab && tab?.id) {
         try {
           await chrome.tabs.remove(tab.id);
-          this.tabCache.delete(project.url);
-          console.log(`[${project.name}] Temp tab closed`);
+          console.log(`[${project.name}] Temp tab ${tab.id} closed successfully`);
         } catch (closeError) {
-          console.error(`[${project.name}] Failed to close temp tab:`, closeError);
+          console.error(`[${project.name}] Failed to close temp tab ${tab.id}:`, closeError);
+          // 即使关闭失败，也要从缓存中移除，避免缓存污染
+          // 这样下次会重新创建标签页，而不是尝试重用一个可能已经无效的标签页
+        } finally {
+          // 无论关闭成功与否，都从缓存中移除
+          this.tabCache.delete(project.url);
         }
       } else if (tab?.id) {
         console.log(`[${project.name}] Reused tab ${tab.id}, keeping it open`);
@@ -606,13 +621,6 @@ class MonitorManager {
     }
 
     throw new Error('Timeout waiting for tab to load');
-  }
-
-  private async updateProjectContent(projectId: string, content: string): Promise<void> {
-    await storageManager.updateProject(projectId, {
-      lastContent: content,
-      lastChecked: new Date().toISOString()
-    });
   }
 
   private async addLog(projectId: string, logEntry: LogEntry): Promise<void> {
@@ -769,14 +777,13 @@ class MonitorManager {
           headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
 
-        // 验证替换后的请求头总大小
-        const headersString = JSON.stringify(headers);
-        const headersSize = new Blob([headersString]).size;
-        if (headersSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
-          throw new Error(t('webhookHeadersSizeExceeded', [headersSize.toString(), LIMITS.MAX_WEBHOOK_HEADERS_SIZE.toString()]));
+        // 验证替换后的请求头（包括格式和大小）
+        const headersValidation = validateWebhookHeaders(headers);
+        if (!headersValidation.valid) {
+          throw new Error(headersValidation.error);
         }
       } catch (error) {
-        console.error('Failed to parse webhook headers:', error);
+        console.error('Failed to parse or validate webhook headers:', error);
         throw error;
       }
     }
@@ -911,14 +918,13 @@ class MonitorManager {
           headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
 
-        // 验证替换后的请求头总大小
-        const headersString = JSON.stringify(headers);
-        const headersSize = new Blob([headersString]).size;
-        if (headersSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
-          throw new Error(t('webhookHeadersSizeExceeded', [headersSize.toString(), LIMITS.MAX_WEBHOOK_HEADERS_SIZE.toString()]));
+        // 验证替换后的请求头（包括格式和大小）
+        const headersValidation = validateWebhookHeaders(headers);
+        if (!headersValidation.valid) {
+          throw new Error(headersValidation.error);
         }
       } catch (error) {
-        console.error('Failed to parse webhook headers:', error);
+        console.error('Failed to parse or validate webhook headers:', error);
         throw error;
       }
     }
