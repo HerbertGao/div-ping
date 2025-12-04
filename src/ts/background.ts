@@ -1,12 +1,65 @@
+import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse } from './types';
+import * as ipaddr from 'ipaddr.js';
+import { storageManager } from './storageManager';
+
+// 监控信息接口（不再需要 intervalId）
+interface MonitorInfo {
+  project: Project;
+}
+
+// Webhook变量接口
+interface WebhookVariables {
+  projectId: string;
+  projectName: string;
+  url: string;
+  selector: string;
+  oldContent: string;
+  newContent: string;
+  timestamp: string;
+}
+
 // 后台服务工作器
 class MonitorManager {
+  private monitors: Map<string, MonitorInfo> = new Map();
+  private tabCache: Map<string, number> = new Map(); // 缓存每个URL对应的标签页ID
+
   constructor() {
-    this.monitors = new Map();
     this.init();
+    this.setupTabCleanup();
+  }
+
+  // 设置标签页清理监听器
+  private setupTabCleanup(): void {
+    // 监听标签页关闭事件，清理缓存
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      // 查找并删除缓存中的标签页
+      for (const [url, cachedTabId] of this.tabCache.entries()) {
+        if (cachedTabId === tabId) {
+          this.tabCache.delete(url);
+          console.log(`Tab ${tabId} for URL ${url} closed, removed from cache`);
+          break;
+        }
+      }
+    });
+
+    // 监听标签页更新事件（URL改变时更新缓存）
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+      if (changeInfo.url) {
+        // 移除旧URL的缓存
+        for (const [url, cachedTabId] of this.tabCache.entries()) {
+          if (cachedTabId === tabId) {
+            this.tabCache.delete(url);
+            break;
+          }
+        }
+        // 添加新URL的缓存
+        this.tabCache.set(changeInfo.url, tabId);
+      }
+    });
   }
 
   // 验证Webhook URL安全性（防止SSRF攻击）
-  validateWebhookUrl(urlString) {
+  private validateWebhookUrl(urlString: string): boolean {
     try {
       const url = new URL(urlString);
 
@@ -23,89 +76,83 @@ class MonitorManager {
       // 获取hostname
       const hostname = url.hostname.toLowerCase();
 
-      // 禁止localhost和127.0.0.1
-      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+      // 禁止特定的localhost主机名
+      if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
         throw new Error('禁止访问本地地址');
       }
 
-      // 检查IPv4地址
-      const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-      const ipv4Match = hostname.match(ipv4Pattern);
-
-      if (ipv4Match) {
-        const parts = ipv4Match.slice(1, 5).map(Number);
-
-        // 验证每个八位组的范围
-        if (parts.some(part => part > 255)) {
-          throw new Error('无效的IPv4地址');
-        }
-
-        // 检查私有IP范围和特殊地址
-        if (
-          parts[0] === 0 || // 0.0.0.0/8 (current network)
-          parts[0] === 10 || // 10.0.0.0/8 (private)
-          parts[0] === 127 || // 127.0.0.0/8 (loopback - 完整回环地址范围)
-          (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || // 172.16.0.0/12 (private)
-          (parts[0] === 169 && parts[1] === 254) || // 169.254.0.0/16 (link-local)
-          (parts[0] === 192 && parts[1] === 168) || // 192.168.0.0/16 (private)
-          (parts[0] === 192 && parts[1] === 0 && parts[2] === 0) || // 192.0.0.0/24
-          (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) || // 192.0.2.0/24 (TEST-NET-1)
-          (parts[0] === 198 && parts[1] >= 18 && parts[1] <= 19) || // 198.18.0.0/15 (benchmark)
-          (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) || // 198.51.100.0/24 (TEST-NET-2)
-          (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) || // 203.0.113.0/24 (TEST-NET-3)
-          (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) || // 100.64.0.0/10 (CGN)
-          parts[0] >= 224 // 224.0.0.0/4 (multicast), 240+ (reserved/broadcast)
-        ) {
-          throw new Error('禁止访问私有IP地址或特殊用途地址');
-        }
-      }
-
-      // 检查IPv6地址
-      if (hostname.includes(':')) {
-        const lower = hostname.toLowerCase();
-
-        // 禁止回环地址
-        if (lower === '::1' || lower === '0:0:0:0:0:0:0:1') {
-          throw new Error('禁止访问本地地址');
-        }
-
-        // 禁止IPv4映射的IPv6地址 (::ffff:x.x.x.x)
-        if (lower.includes('::ffff:')) {
-          throw new Error('禁止使用IPv4映射的IPv6地址');
-        }
-
-        // 禁止唯一本地地址 (fc00::/7 - 包括fc和fd开头)
-        if (lower.startsWith('fc') || lower.startsWith('fd')) {
-          throw new Error('禁止访问IPv6私有地址');
-        }
-
-        // 禁止链路本地地址 (fe80::/10)
-        if (lower.startsWith('fe8') || lower.startsWith('fe9') ||
-            lower.startsWith('fea') || lower.startsWith('feb')) {
-          throw new Error('禁止访问IPv6链路本地地址');
-        }
-
-        // 禁止站点本地地址 (fec0::/10 - 已废弃)
-        if (lower.startsWith('fec') || lower.startsWith('fed') ||
-            lower.startsWith('fee') || lower.startsWith('fef')) {
-          throw new Error('禁止访问IPv6站点本地地址');
-        }
-
-        // 禁止多播地址 (ff00::/8)
-        if (lower.startsWith('ff')) {
-          throw new Error('禁止访问IPv6多播地址');
-        }
-
-        // 禁止未指定地址 (::)
-        if (lower === '::' || lower === '0:0:0:0:0:0:0:0') {
-          throw new Error('禁止使用未指定的IPv6地址');
-        }
-      }
-
-      // 禁止内网域名
-      if (hostname.endsWith('.local') || hostname.endsWith('.internal') ||
-          hostname.endsWith('.localhost')) {
+      // 禁止内网域名后缀
+      if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
         throw new Error('禁止访问内网域名');
+      }
+
+      // 尝试解析为IP地址
+      if (ipaddr.isValid(hostname)) {
+        const addr = ipaddr.parse(hostname);
+
+        // 检查IP地址范围
+        const range = addr.range();
+
+        // 禁止的IP地址范围
+        const forbiddenRanges = [
+          'unspecified',    // 0.0.0.0 或 ::
+          'broadcast',      // 255.255.255.255
+          'multicast',      // 224.0.0.0/4 或 ff00::/8
+          'linkLocal',      // 169.254.0.0/16 或 fe80::/10
+          'loopback',       // 127.0.0.0/8 或 ::1
+          'private',        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 或 fc00::/7
+          'reserved',       // 保留地址
+          'carrierGradeNat', // 100.64.0.0/10
+          'uniqueLocal'     // IPv6 唯一本地地址 fc00::/7
+        ];
+
+        if (forbiddenRanges.includes(range)) {
+          throw new Error(`禁止访问${range}类型的IP地址`);
+        }
+
+        // IPv4特殊检查：测试网络和基准测试网络
+        if (addr.kind() === 'ipv4') {
+          const bytes = addr.toByteArray();
+
+          // 192.0.0.0/24 (IETF协议分配)
+          if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 0) {
+            throw new Error('禁止访问IETF协议分配地址段');
+          }
+
+          // 192.0.2.0/24 (TEST-NET-1)
+          if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 2) {
+            throw new Error('禁止访问测试网络地址');
+          }
+
+          // 198.18.0.0/15 (基准测试)
+          if (bytes[0] === 198 && (bytes[1] === 18 || bytes[1] === 19)) {
+            throw new Error('禁止访问基准测试地址段');
+          }
+
+          // 198.51.100.0/24 (TEST-NET-2)
+          if (bytes[0] === 198 && bytes[1] === 51 && bytes[2] === 100) {
+            throw new Error('禁止访问测试网络地址');
+          }
+
+          // 203.0.113.0/24 (TEST-NET-3)
+          if (bytes[0] === 203 && bytes[1] === 0 && bytes[2] === 113) {
+            throw new Error('禁止访问测试网络地址');
+          }
+        }
+
+        // IPv6特殊检查：IPv4映射地址
+        if (addr.kind() === 'ipv6') {
+          const ipv6Addr = addr as ipaddr.IPv6;
+          if (ipv6Addr.isIPv4MappedAddress()) {
+            // 获取映射的IPv4地址并递归检查
+            const ipv4 = ipv6Addr.toIPv4Address();
+            const ipv4Range = ipv4.range();
+
+            if (forbiddenRanges.includes(ipv4Range)) {
+              throw new Error(`禁止使用映射到${ipv4Range}类型的IPv4地址`);
+            }
+          }
+        }
       }
 
       return true;
@@ -117,10 +164,9 @@ class MonitorManager {
     }
   }
 
-  async init() {
+  private async init(): Promise<void> {
     // 加载已保存的项目并启动活动监控
-    const data = await chrome.storage.local.get(['projects']);
-    const projects = data.projects || [];
+    const projects = await storageManager.getProjects();
 
     projects.forEach(project => {
       if (project.active) {
@@ -129,11 +175,11 @@ class MonitorManager {
     });
 
     // 监听消息
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message: MessageRequest, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
       // 异步处理消息
       this.handleMessage(message, sender, sendResponse).catch(error => {
         console.error('Error handling message:', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       });
       return true; // 保持消息通道开放以支持异步响应
     });
@@ -141,28 +187,55 @@ class MonitorManager {
     // 注意: 现在使用临时标签页,不需要监听标签页关闭事件
   }
 
-  async handleMessage(message, sender, sendResponse) {
+  private async handleMessage(message: MessageRequest, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void): Promise<void> {
     try {
       switch (message.action) {
         case 'startMonitor':
+          if (!message.project) {
+            sendResponse({ success: false, error: 'Project is required' });
+            break;
+          }
           this.startMonitor(message.project);
           sendResponse({ success: true });
           break;
+
         case 'stopMonitor':
+          if (!message.projectId) {
+            sendResponse({ success: false, error: 'ProjectId is required' });
+            break;
+          }
           this.stopMonitor(message.projectId);
           sendResponse({ success: true });
           break;
-        case 'getProjectLogs':
+
+        case 'getProjectLogs': {
+          if (!message.projectId) {
+            sendResponse({ success: false, error: 'ProjectId is required' });
+            break;
+          }
           const logs = await this.getProjectLogs(message.projectId);
           sendResponse({ success: true, logs });
           break;
-        case 'clearProjectLogs':
+        }
+
+        case 'clearProjectLogs': {
+          if (!message.projectId) {
+            sendResponse({ success: false, error: 'ProjectId is required' });
+            break;
+          }
           await this.clearProjectLogs(message.projectId);
           sendResponse({ success: true });
           break;
-        case 'elementSelected':
+        }
+
+        case 'elementSelected': {
           // 创建新项目
-          const project = {
+          if (!message.url || !message.selector) {
+            sendResponse({ success: false, error: 'URL and selector are required' });
+            break;
+          }
+
+          const project: Project = {
             id: Date.now().toString(),
             name: message.name || `监控-${new Date().toLocaleString()}`,
             url: message.url,
@@ -176,10 +249,7 @@ class MonitorManager {
           };
 
           // 保存到storage
-          const data = await chrome.storage.local.get(['projects']);
-          const projects = data.projects || [];
-          projects.push(project);
-          await chrome.storage.local.set({ projects });
+          await storageManager.addProject(project);
 
           console.log('Project saved:', project);
 
@@ -188,43 +258,43 @@ class MonitorManager {
 
           sendResponse({ success: true, projectId: project.id });
           break;
-        case 'updateProject':
-          // 更新现有项目
-          const updateData = await chrome.storage.local.get(['projects']);
-          const updateProjects = updateData.projects || [];
-          const projectIndex = updateProjects.findIndex(p => p.id === message.projectId);
+        }
 
-          if (projectIndex === -1) {
-            sendResponse({ success: false, error: 'Project not found' });
+        case 'updateProject': {
+          // 更新现有项目
+          if (!message.projectId || !message.name || !message.selector || message.interval === undefined || message.browserNotification === undefined) {
+            sendResponse({ success: false, error: 'Required fields missing for update' });
             break;
           }
 
-          const existingProject = updateProjects[projectIndex];
-
-          // 更新项目信息，保留active状态和lastContent(除非提供了新的)
-          updateProjects[projectIndex] = {
-            ...existingProject,
+          // 使用 storageManager 原子性更新
+          const updatedProject = await storageManager.updateProject(message.projectId, {
             name: message.name,
             selector: message.selector,
             interval: message.interval,
             browserNotification: message.browserNotification,
             webhook: message.webhook || { enabled: false },
-            lastContent: message.initialContent || existingProject.lastContent
-          };
+            lastContent: message.initialContent
+          });
 
-          await chrome.storage.local.set({ projects: updateProjects });
+          if (!updatedProject) {
+            sendResponse({ success: false, error: 'Project not found' });
+            break;
+          }
 
-          console.log('Project updated:', updateProjects[projectIndex]);
+          console.log('Project updated:', updatedProject);
 
           // 如果项目是活跃的，重新启动监控
-          if (updateProjects[projectIndex].active) {
+          if (updatedProject.active) {
             this.stopMonitor(message.projectId);
-            this.startMonitor(updateProjects[projectIndex]);
+            this.startMonitor(updatedProject);
           }
 
           sendResponse({ success: true, projectId: message.projectId });
           break;
-        case 'testBrowserNotification':
+        }
+
+        case 'testBrowserNotification': {
           // 测试浏览器通知
           chrome.notifications.create(
             {
@@ -245,84 +315,154 @@ class MonitorManager {
             }
           );
           break;
-        case 'testWebhook':
+        }
+
+        case 'testWebhook': {
           // 测试Webhook
+          if (!message.config) {
+            sendResponse({ success: false, error: 'Webhook config is required' });
+            break;
+          }
           try {
             const testResult = await this.testWebhook(message.config);
             sendResponse({ success: true, status: testResult.status, statusText: testResult.statusText });
           } catch (error) {
-            sendResponse({ success: false, error: error.message });
+            sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
           }
           break;
+        }
+
         default:
           sendResponse({ success: false, error: 'Unknown action: ' + message.action });
       }
     } catch (error) {
       console.error('Error in handleMessage:', error);
-      sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
 
-  startMonitor(project) {
+  private startMonitor(project: Project): void {
     // 停止已存在的监控
     this.stopMonitor(project.id);
 
     console.log(`Starting monitor for project: ${project.name}`);
 
-    // 创建定时器
-    const intervalId = setInterval(() => {
-      this.checkElement(project);
-    }, project.interval);
+    // 使用 chrome.alarms API 代替 setInterval
+    // alarm 名称使用 project.id 作为标识
+    const alarmName = `monitor_${project.id}`;
 
+    // 创建周期性 alarm，间隔时间转换为分钟（alarms API 最小间隔是 1 分钟）
+    const periodInMinutes = Math.max(1, project.interval / 60000);
+
+    chrome.alarms.create(alarmName, {
+      delayInMinutes: 0, // 立即触发第一次
+      periodInMinutes: periodInMinutes
+    });
+
+    // 保存监控信息
     this.monitors.set(project.id, {
-      intervalId,
       project
     });
 
-    // 立即检查一次
+    console.log(`Alarm created: ${alarmName} with period ${periodInMinutes} minutes`);
+
+    // 立即检查一次（不等待 alarm 触发）
     this.checkElement(project);
   }
 
-  stopMonitor(projectId) {
+  private stopMonitor(projectId: string): void {
     const monitor = this.monitors.get(projectId);
     if (monitor) {
       console.log(`Stopping monitor for project: ${monitor.project.name}`);
-      clearInterval(monitor.intervalId);
+
+      // 清除 alarm
+      const alarmName = `monitor_${projectId}`;
+      chrome.alarms.clear(alarmName);
+
       this.monitors.delete(projectId);
     }
   }
 
+  /**
+   * 获取或创建用于检测的标签页
+   * 优先重用已存在的标签页，减少资源消耗
+   */
+  private async getOrCreateTab(url: string): Promise<chrome.tabs.Tab> {
+    // 1. 检查缓存中是否有该URL的标签页
+    const cachedTabId = this.tabCache.get(url);
+    if (cachedTabId) {
+      try {
+        const tab = await chrome.tabs.get(cachedTabId);
+        // 验证标签页是否仍然有效且URL匹配
+        if (tab && tab.url === url) {
+          console.log(`Reusing cached tab ${cachedTabId} for URL: ${url}`);
+          return tab;
+        } else {
+          // 缓存失效，清理
+          this.tabCache.delete(url);
+        }
+      } catch {
+        // 标签页已不存在，清理缓存
+        this.tabCache.delete(url);
+      }
+    }
 
-  async checkElement(project) {
-    let tempTab = null;
+    // 2. 查询是否有其他打开的标签页
+    const existingTabs = await chrome.tabs.query({ url });
+    if (existingTabs.length > 0) {
+      const tab = existingTabs[0];
+      console.log(`Found existing tab ${tab.id} for URL: ${url}`);
+      // 更新缓存
+      this.tabCache.set(url, tab.id!);
+      return tab;
+    }
+
+    // 3. 创建新标签页（后台打开）
+    console.log(`Creating new background tab for URL: ${url}`);
+    const newTab = await chrome.tabs.create({
+      url,
+      active: false,  // 不激活标签页
+      pinned: false   // 不固定标签页
+    });
+
+    // 添加到缓存
+    this.tabCache.set(url, newTab.id!);
+
+    return newTab;
+  }
+
+  public async checkElement(project: Project): Promise<void> {
+    let tab: chrome.tabs.Tab | null = null;
+    let shouldCloseTab = false;
 
     try {
-      console.log(`[${project.name}] Opening temp tab for URL: ${project.url}`);
+      console.log(`[${project.name}] Getting or creating tab for URL: ${project.url}`);
 
-      // 在新标签页中打开URL (后台打开,尽可能不打扰用户)
-      tempTab = await chrome.tabs.create({
-        url: project.url,
-        active: false,  // 不激活标签页
-        pinned: false   // 不固定标签页
-      });
+      // 检查缓存中是否已有该URL的标签页
+      const hadCachedTab = this.tabCache.has(project.url);
+
+      // 获取或创建标签页（优先重用现有标签页）
+      tab = await this.getOrCreateTab(project.url);
+
+      // 如果之前没有缓存，说明是新创建的，需要关闭
+      shouldCloseTab = !hadCachedTab;
 
       // 等待页面加载完成
-      await this.waitForTabLoad(tempTab.id);
+      await this.waitForTabLoad(tab.id!);
 
       // 向content script发送检查请求
-      const response = await chrome.tabs.sendMessage(tempTab.id, {
+      const response = await chrome.tabs.sendMessage(tab.id!, {
         action: 'checkElement',
         selector: project.selector
       });
 
       if (response.success) {
-        const newContent = response.content;
+        const newContent: string = response.content;
 
         console.log(`[${project.name}] Content retrieved, length: ${newContent.length}`);
 
         // 从storage重新读取最新的项目配置，确保使用最新的lastContent和通知设置
-        const data = await chrome.storage.local.get(['projects']);
-        const projects = data.projects || [];
+        const projects = await storageManager.getProjects();
         const latestProject = projects.find(p => p.id === project.id);
 
         // 使用最新的lastContent进行比较
@@ -335,9 +475,9 @@ class MonitorManager {
           console.log(`[${project.name}] Content changed!`);
 
           if (latestProject) {
-            this.notifyChange(latestProject, currentLastContent, newContent);
+            this.notifyChange(latestProject, currentLastContent!, newContent);
           } else {
-            this.notifyChange(project, currentLastContent, newContent);
+            this.notifyChange(project, currentLastContent!, newContent);
           }
         } else {
           console.log(`[${project.name}] No change detected`);
@@ -348,7 +488,7 @@ class MonitorManager {
           timestamp: new Date().toISOString(),
           content: newContent,
           oldContent: currentLastContent || null,
-          changed: hasChanged,
+          changed: hasChanged || false,
           success: true
         });
 
@@ -370,27 +510,30 @@ class MonitorManager {
       // 记录失败日志
       await this.addLog(project.id, {
         timestamp: new Date().toISOString(),
-        error: error.message || 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
         success: false
       });
     } finally {
-      // 关闭临时标签页
-      if (tempTab && tempTab.id) {
+      // 只关闭新创建的临时标签页，不关闭重用的标签页
+      if (shouldCloseTab && tab?.id) {
         try {
-          await chrome.tabs.remove(tempTab.id);
+          await chrome.tabs.remove(tab.id);
+          this.tabCache.delete(project.url);
           console.log(`[${project.name}] Temp tab closed`);
         } catch (closeError) {
           console.error(`[${project.name}] Failed to close temp tab:`, closeError);
         }
+      } else if (tab?.id) {
+        console.log(`[${project.name}] Reused tab ${tab.id}, keeping it open`);
       }
     }
   }
 
-  async waitForTabLoad(tabId, timeout = 30000) {
+  private async waitForTabLoad(tabId: number, timeout: number = 30000): Promise<void> {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
 
-      const checkStatus = () => {
+      const checkStatus = (): void => {
         chrome.tabs.get(tabId, (tab) => {
           if (chrome.runtime.lastError) {
             reject(new Error('Tab not found'));
@@ -412,50 +555,26 @@ class MonitorManager {
     });
   }
 
-  async updateProjectContent(projectId, content) {
-    const data = await chrome.storage.local.get(['projects']);
-    const projects = data.projects || [];
-    const project = projects.find(p => p.id === projectId);
-
-    if (project) {
-      project.lastContent = content;
-      project.lastChecked = new Date().toISOString();
-      await chrome.storage.local.set({ projects });
-    }
+  private async updateProjectContent(projectId: string, content: string): Promise<void> {
+    await storageManager.updateProject(projectId, {
+      lastContent: content,
+      lastChecked: new Date().toISOString()
+    });
   }
 
-  async addLog(projectId, logEntry) {
-    const data = await chrome.storage.local.get(['logs']);
-    const logs = data.logs || {};
-
-    // 初始化项目日志数组
-    if (!logs[projectId]) {
-      logs[projectId] = [];
-    }
-
-    // 添加日志(最多保留100条)
-    logs[projectId].unshift(logEntry);
-    if (logs[projectId].length > 100) {
-      logs[projectId] = logs[projectId].slice(0, 100);
-    }
-
-    await chrome.storage.local.set({ logs });
+  private async addLog(projectId: string, logEntry: LogEntry): Promise<void> {
+    await storageManager.addLog(projectId, logEntry);
   }
 
-  async getProjectLogs(projectId) {
-    const data = await chrome.storage.local.get(['logs']);
-    const logs = data.logs || {};
-    return logs[projectId] || [];
+  private async getProjectLogs(projectId: string): Promise<LogEntry[]> {
+    return storageManager.getProjectLogs(projectId);
   }
 
-  async clearProjectLogs(projectId) {
-    const data = await chrome.storage.local.get(['logs']);
-    const logs = data.logs || {};
-    delete logs[projectId];
-    await chrome.storage.local.set({ logs });
+  private async clearProjectLogs(projectId: string): Promise<void> {
+    await storageManager.clearProjectLogs(projectId);
   }
 
-  async notifyChange(project, oldContent, newContent) {
+  private async notifyChange(project: Project, oldContent: string, newContent: string): Promise<void> {
     const message = `元素内容已变化!\n\n项目: ${project.name}\n页面: ${project.url}`;
 
     // 浏览器通知
@@ -478,8 +597,8 @@ class MonitorManager {
       );
     }
 
-    // Webhook通知 - 支持新旧格式
-    const webhook = project.webhook || (project.webhookUrl ? { enabled: true, url: project.webhookUrl, method: 'POST' } : null);
+    // Webhook通知
+    const webhook = project.webhook;
 
     if (webhook?.enabled && webhook.url) {
       try {
@@ -492,7 +611,7 @@ class MonitorManager {
   }
 
   // 变量替换函数
-  replaceVariables(template, variables) {
+  private replaceVariables(template: string, variables: WebhookVariables): string {
     if (!template) return template;
 
     let result = template;
@@ -504,19 +623,23 @@ class MonitorManager {
   }
 
   // 发送Webhook
-  async sendWebhook(webhook, project, oldContent, newContent) {
+  private async sendWebhook(webhook: WebhookConfig, project: Project, oldContent: string, newContent: string): Promise<Response> {
     const timestamp = new Date().toISOString();
+
+    if (!webhook.url) {
+      throw new Error('Webhook URL is required');
+    }
 
     // 验证Webhook URL（防止SSRF）
     try {
       this.validateWebhookUrl(webhook.url);
     } catch (error) {
-      console.error('Webhook URL验证失败:', error.message);
-      throw new Error(`Webhook URL验证失败: ${error.message}`);
+      console.error('Webhook URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(`Webhook URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     // 可用变量
-    const variables = {
+    const variables: WebhookVariables = {
       projectId: project.id,
       projectName: project.name,
       url: project.url,
@@ -537,17 +660,17 @@ class MonitorManager {
     try {
       this.validateWebhookUrl(url);
     } catch (error) {
-      console.error('替换变量后的URL验证失败:', error.message);
-      throw new Error(`替换变量后的URL验证失败: ${error.message}`);
+      console.error('替换变量后的URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(`替换变量后的URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     // 准备请求配置
-    const fetchOptions = {
+    const fetchOptions: RequestInit = {
       method: webhook.method || 'POST'
     };
 
     // 处理请求头
-    let headers = {};
+    const headers: Record<string, string> = {};
     if (webhook.headers) {
       try {
         const customHeaders = typeof webhook.headers === 'string'
@@ -556,7 +679,7 @@ class MonitorManager {
 
         // 替换请求头中的变量
         for (const [key, value] of Object.entries(customHeaders)) {
-          headers[key] = this.replaceVariables(value, variables).replace(/%/g, ''); // 解码用于headers
+          headers[key] = this.replaceVariables(String(value), variables).replace(/%/g, ''); // 解码用于headers
         }
       } catch (error) {
         console.error('Failed to parse webhook headers:', error);
@@ -567,7 +690,7 @@ class MonitorManager {
     }
 
     // 处理请求体 (仅POST/PUT/PATCH)
-    if (['POST', 'PUT', 'PATCH'].includes(fetchOptions.method.toUpperCase())) {
+    if (['POST', 'PUT', 'PATCH'].includes((fetchOptions.method as string).toUpperCase())) {
       if (webhook.body) {
         try {
           // 用户自定义body
@@ -611,7 +734,7 @@ class MonitorManager {
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      if ((error as Error).name === 'AbortError') {
         throw new Error('Webhook请求超时（10秒）');
       }
       throw error;
@@ -619,19 +742,23 @@ class MonitorManager {
   }
 
   // 测试Webhook
-  async testWebhook(config) {
+  private async testWebhook(config: WebhookConfig): Promise<Response> {
     const timestamp = new Date().toISOString();
+
+    if (!config.url) {
+      throw new Error('Webhook URL is required');
+    }
 
     // 验证Webhook URL（防止SSRF）
     try {
       this.validateWebhookUrl(config.url);
     } catch (error) {
-      console.error('Webhook URL验证失败:', error.message);
-      throw new Error(`Webhook URL验证失败: ${error.message}`);
+      console.error('Webhook URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(`Webhook URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     // 测试用变量
-    const variables = {
+    const variables: WebhookVariables = {
       projectId: 'test-project-id',
       projectName: '测试项目',
       url: 'https://example.com',
@@ -652,17 +779,17 @@ class MonitorManager {
     try {
       this.validateWebhookUrl(url);
     } catch (error) {
-      console.error('替换变量后的URL验证失败:', error.message);
-      throw new Error(`替换变量后的URL验证失败: ${error.message}`);
+      console.error('替换变量后的URL验证失败:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(`替换变量后的URL验证失败: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     // 准备请求配置
-    const fetchOptions = {
+    const fetchOptions: RequestInit = {
       method: config.method || 'POST'
     };
 
     // 处理请求头
-    let headers = {};
+    const headers: Record<string, string> = {};
     if (config.headers) {
       try {
         const customHeaders = typeof config.headers === 'string'
@@ -671,7 +798,7 @@ class MonitorManager {
 
         // 替换请求头中的变量
         for (const [key, value] of Object.entries(customHeaders)) {
-          headers[key] = this.replaceVariables(value, variables).replace(/%/g, ''); // 解码用于headers
+          headers[key] = this.replaceVariables(String(value), variables).replace(/%/g, ''); // 解码用于headers
         }
       } catch (error) {
         console.error('Failed to parse webhook headers:', error);
@@ -682,7 +809,7 @@ class MonitorManager {
     }
 
     // 处理请求体 (仅POST/PUT/PATCH)
-    if (['POST', 'PUT', 'PATCH'].includes(fetchOptions.method.toUpperCase())) {
+    if (['POST', 'PUT', 'PATCH'].includes((fetchOptions.method as string).toUpperCase())) {
       if (config.body) {
         try {
           // 用户自定义body
@@ -702,7 +829,7 @@ class MonitorManager {
           fetchOptions.body = JSON.stringify(bodyContent);
         } catch (error) {
           console.error('Failed to parse webhook body:', error);
-          throw new Error('请求体JSON格式错误: ' + error.message);
+          throw new Error('请求体JSON格式错误: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
       // 如果config.body为空，则不设置body
@@ -723,7 +850,7 @@ class MonitorManager {
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      if ((error as Error).name === 'AbortError') {
         throw new Error('Webhook请求超时（10秒）');
       }
       throw error;
@@ -733,6 +860,30 @@ class MonitorManager {
 
 // 初始化监控管理器
 const monitorManager = new MonitorManager();
+
+// 监听 alarms 触发事件
+chrome.alarms.onAlarm.addListener((alarm) => {
+  console.log(`Alarm triggered: ${alarm.name}`);
+
+  // 检查是否是监控 alarm
+  if (alarm.name.startsWith('monitor_')) {
+    const projectId = alarm.name.replace('monitor_', '');
+
+    // 从 storage 重新加载项目信息（确保使用最新配置）
+    storageManager.getProjects().then((projects) => {
+      const project = projects.find(p => p.id === projectId);
+
+      if (project && project.active) {
+        // 执行检查
+        monitorManager.checkElement(project);
+      } else {
+        // 项目不存在或已停用，清除 alarm
+        console.log(`Project ${projectId} not found or inactive, clearing alarm`);
+        chrome.alarms.clear(alarm.name);
+      }
+    });
+  }
+});
 
 // 安装时请求通知权限
 chrome.runtime.onInstalled.addListener(() => {

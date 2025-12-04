@@ -1,40 +1,37 @@
+import { Project, LogEntry, MessageResponse } from './types';
+import { storageManager } from './storageManager';
+
 // 监控项目管理
 class ProjectManager {
+  private projects: Project[] = [];
+
   constructor() {
-    this.projects = [];
     this.init();
   }
 
-  async init() {
+  private async init(): Promise<void> {
     await this.loadProjects();
     this.render();
     this.attachEventListeners();
   }
 
-  async loadProjects() {
-    const data = await chrome.storage.local.get(['projects']);
-    this.projects = data.projects || [];
+  public async loadProjects(): Promise<void> {
+    this.projects = await storageManager.getProjects();
   }
 
-  async saveProjects() {
-    await chrome.storage.local.set({ projects: this.projects });
+  private async saveProjects(): Promise<void> {
+    await storageManager.setProjects(this.projects);
   }
 
-  async addProject(project) {
-    this.projects.push(project);
-    await this.saveProjects();
-    this.render();
-  }
-
-  async removeProject(id) {
-    this.projects = this.projects.filter(p => p.id !== id);
-    await this.saveProjects();
+  private async removeProject(id: string): Promise<void> {
+    await storageManager.removeProject(id);
+    await this.loadProjects(); // Reload after deletion
     this.render();
     // 通知后台停止监控
     chrome.runtime.sendMessage({ action: 'stopMonitor', projectId: id });
   }
 
-  async toggleProject(id) {
+  private async toggleProject(id: string): Promise<void> {
     const project = this.projects.find(p => p.id === id);
     if (project) {
       project.active = !project.active;
@@ -50,17 +47,9 @@ class ProjectManager {
     }
   }
 
-  async updateProject(id, updates) {
-    const project = this.projects.find(p => p.id === id);
-    if (project) {
-      Object.assign(project, updates);
-      await this.saveProjects();
-      this.render();
-    }
-  }
-
-  render() {
+  public render(): void {
     const container = document.getElementById('projectsList');
+    if (!container) return;
 
     if (this.projects.length === 0) {
       container.innerHTML = `
@@ -104,31 +93,37 @@ class ProjectManager {
     `).join('');
   }
 
-  getNotificationMethods(project) {
-    const methods = [];
+  private getNotificationMethods(project: Project): string {
+    const methods: string[] = [];
     if (project.browserNotification) methods.push('浏览器通知');
-    // 兼容旧版本webhookUrl和新版本webhook对象
-    if (project.webhook?.enabled || project.webhookUrl) {
+    if (project.webhook?.enabled) {
       const method = project.webhook?.method || 'POST';
       methods.push(`Webhook(${method})`);
     }
     return methods.length > 0 ? methods.join(', ') : '无';
   }
 
-  escapeHtml(text) {
+  private escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
-  attachEventListeners() {
-    document.getElementById('projectsList').addEventListener('click', async (e) => {
-      const button = e.target.closest('button');
+  private attachEventListeners(): void {
+    const projectsList = document.getElementById('projectsList');
+    if (!projectsList) return;
+
+    projectsList.addEventListener('click', async (e: Event) => {
+      const button = (e.target as HTMLElement).closest('button');
       if (!button) return;
 
-      const projectItem = button.closest('.project-item');
+      const projectItem = button.closest('.project-item') as HTMLElement;
+      if (!projectItem) return;
+
       const projectId = projectItem.dataset.id;
-      const action = button.dataset.action;
+      if (!projectId) return;
+
+      const action = (button as HTMLElement).dataset.action;
 
       switch (action) {
         case 'toggle':
@@ -149,21 +144,21 @@ class ProjectManager {
     });
   }
 
-  async editProject(projectId) {
+  private async editProject(projectId: string): Promise<void> {
     const project = this.projects.find(p => p.id === projectId);
     if (!project) return;
 
     // 获取项目对应的标签页
     const tabs = await chrome.tabs.query({ url: project.url });
-    let targetTab = tabs.length > 0 ? tabs[0] : null;
+    let targetTab: chrome.tabs.Tab | undefined = tabs.length > 0 ? tabs[0] : undefined;
 
     // 如果没有找到对应的标签页，尝试打开一个新的
     if (!targetTab) {
       targetTab = await chrome.tabs.create({ url: project.url, active: true });
       // 等待页面加载
-      await new Promise((resolve) => {
-        const listener = (tabId, info) => {
-          if (tabId === targetTab.id && info.status === 'complete') {
+      await new Promise<void>((resolve) => {
+        const listener = (tabId: number, info: { status?: string }) => {
+          if (tabId === targetTab!.id && info.status === 'complete') {
             chrome.tabs.onUpdated.removeListener(listener);
             resolve();
           }
@@ -172,14 +167,14 @@ class ProjectManager {
       });
     } else {
       // 切换到该标签页
-      await chrome.tabs.update(targetTab.id, { active: true });
+      await chrome.tabs.update(targetTab.id!, { active: true });
     }
 
     // 发送消息到content script显示编辑对话框
-    chrome.tabs.sendMessage(targetTab.id, {
+    chrome.tabs.sendMessage(targetTab.id!, {
       action: 'editProject',
       project: project
-    }, (response) => {
+    }, () => {
       if (chrome.runtime.lastError) {
         alert('无法在当前页面打开编辑对话框。请确保页面已加载完成。');
       }
@@ -189,11 +184,11 @@ class ProjectManager {
     window.close();
   }
 
-  async showProjectLogs(projectId) {
+  private async showProjectLogs(projectId: string): Promise<void> {
     const project = this.projects.find(p => p.id === projectId);
     if (!project) return;
 
-    const response = await chrome.runtime.sendMessage({
+    const response: MessageResponse = await chrome.runtime.sendMessage({
       action: 'getProjectLogs',
       projectId: projectId
     });
@@ -203,11 +198,11 @@ class ProjectManager {
       return;
     }
 
-    const logs = response.logs || [];
+    const logs: LogEntry[] = response.logs || [];
     this.displayLogsDialog(project, logs, projectId);
   }
 
-  displayLogsDialog(project, logs, projectId) {
+  private displayLogsDialog(project: Project, logs: LogEntry[], projectId: string): void {
     const dialog = document.createElement('div');
     dialog.innerHTML = `
       <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;">
@@ -228,18 +223,20 @@ class ProjectManager {
 
     document.body.appendChild(dialog);
 
-    const logsContent = dialog.querySelector('#logsContent');
+    const logsContent = dialog.querySelector<HTMLElement>('#logsContent')!;
 
     // 追踪已显示的日志数量
     let displayedLogsCount = logs.length;
 
     // 使用事件委托处理展开/折叠 - 避免重复绑定
-    logsContent.addEventListener('click', (e) => {
-      const toggle = e.target.closest('.log-toggle');
+    logsContent.addEventListener('click', (e: Event) => {
+      const toggle = (e.target as HTMLElement).closest('.log-toggle') as HTMLElement;
       if (toggle) {
         const targetId = toggle.dataset.target;
+        if (!targetId) return;
+
         const content = document.getElementById(targetId);
-        const toggleText = toggle.querySelector('div:last-child');
+        const toggleText = toggle.querySelector<HTMLElement>('div:last-child');
 
         if (content && toggleText) {
           if (content.style.display === 'none') {
@@ -254,14 +251,14 @@ class ProjectManager {
     });
 
     // 定时刷新日志数据 - 增量更新
-    const refreshLogs = async () => {
-      const response = await chrome.runtime.sendMessage({
+    const refreshLogs = async (): Promise<void> => {
+      const response: MessageResponse = await chrome.runtime.sendMessage({
         action: 'getProjectLogs',
         projectId
       });
 
-      if (response && response.success) {
-        const newLogs = response.logs;
+      if (response?.success) {
+        const newLogs: LogEntry[] = response.logs || [];
 
         // 检查是否有新日志
         if (newLogs.length > displayedLogsCount) {
@@ -318,7 +315,8 @@ class ProjectManager {
     // 使用MutationObserver检测dialog被移除
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
-        for (const node of mutation.removedNodes) {
+        const removedNodesArray = Array.from(mutation.removedNodes);
+        for (const node of removedNodesArray) {
           if (node === dialog) {
             clearInterval(refreshInterval);
             observer.disconnect();
@@ -331,15 +329,15 @@ class ProjectManager {
     observer.observe(document.body, { childList: true });
 
     // 清理函数 - 确保清理所有资源
-    const cleanup = () => {
+    const cleanup = (): void => {
       clearInterval(refreshInterval);
       observer.disconnect();
       window.removeEventListener('beforeunload', cleanupHandler);
       dialog.remove();
     };
 
-    // beforeunload处理器（需要命名以便移除）
-    const cleanupHandler = () => {
+    // Beforeunload处理器（需要命名以便移除）
+    const cleanupHandler = (): void => {
       clearInterval(refreshInterval);
       observer.disconnect();
     };
@@ -347,9 +345,9 @@ class ProjectManager {
     // 页面卸载时清理
     window.addEventListener('beforeunload', cleanupHandler);
 
-    dialog.querySelector('#closeLogsBtn').addEventListener('click', cleanup);
+    dialog.querySelector<HTMLButtonElement>('#closeLogsBtn')!.addEventListener('click', cleanup);
 
-    dialog.querySelector('#clearLogsBtn').addEventListener('click', async () => {
+    dialog.querySelector<HTMLButtonElement>('#clearLogsBtn')!.addEventListener('click', async () => {
       if (confirm('确定要清空所有日志吗?')) {
         await chrome.runtime.sendMessage({ action: 'clearProjectLogs', projectId });
         cleanup();
@@ -357,14 +355,14 @@ class ProjectManager {
     });
 
     // 点击背景关闭时也清理
-    dialog.querySelector('div').addEventListener('click', (e) => {
+    dialog.querySelector<HTMLElement>('div')!.addEventListener('click', (e: Event) => {
       if (e.target === e.currentTarget) {
         cleanup();
       }
     });
   }
 
-  renderLogs(logs) {
+  private renderLogs(logs: LogEntry[]): string {
     const uniqueId = Date.now();
     return logs.map((log, index) => {
       const timestamp = new Date(log.timestamp).toLocaleString('zh-CN');
@@ -374,11 +372,11 @@ class ProjectManager {
       if (!log.success) {
         return `<div style="border: 1px solid #f44336; border-radius: 4px; padding: 12px; margin-bottom: 12px; background: #ffebee;">
           <div style="font-size: 12px; color: #666; margin-bottom: 8px;">${timestamp} - <span style="color: #f44336; font-weight: bold;">失败</span></div>
-          <div style="color: #f44336; font-size: 14px;">错误: ${this.escapeHtml(log.error)}</div>
+          <div style="color: #f44336; font-size: 14px;">错误: ${this.escapeHtml(log.error || '')}</div>
         </div>`;
       }
 
-      const contentPreview = (content) => this.escapeHtml((content || '').substring(0, 500)) + (content && content.length > 500 ? '...' : '');
+      const contentPreview = (content?: string | null): string => this.escapeHtml((content || '').substring(0, 500)) + (content && content.length > 500 ? '...' : '');
 
       // 有变化的日志：默认展开
       if (isChanged && log.oldContent) {
@@ -418,23 +416,29 @@ class ProjectManager {
 const projectManager = new ProjectManager();
 
 // 选择元素按钮
-document.getElementById('selectElement').addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+const selectElementBtn = document.getElementById('selectElement');
+if (selectElementBtn) {
+  selectElementBtn.addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  // 注入选择器脚本
-  chrome.tabs.sendMessage(tab.id, { action: 'startSelection' }, (response) => {
-    if (chrome.runtime.lastError) {
-      alert('无法在当前页面启动元素选择。请刷新页面后重试。');
-    } else {
-      window.close();
-    }
+    // 注入选择器脚本
+    chrome.tabs.sendMessage(tab.id!, { action: 'startSelection' }, () => {
+      if (chrome.runtime.lastError) {
+        alert('无法在当前页面启动元素选择。请刷新页面后重试。');
+      } else {
+        window.close();
+      }
+    });
   });
-});
+}
 
 // 打开设置页面
-document.getElementById('openOptions').addEventListener('click', () => {
-  chrome.runtime.openOptionsPage();
-});
+const openOptionsBtn = document.getElementById('openOptions');
+if (openOptionsBtn) {
+  openOptionsBtn.addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+  });
+}
 
 // 监听storage变化以自动刷新列表
 chrome.storage.onChanged.addListener((changes, areaName) => {

@@ -2,11 +2,14 @@
   "name": "div-ping",
   "version": "1.0.0",
   "description": "监控网页中指定DOM元素的变化，通过浏览器通知或Webhook发送提醒。",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
     "clean": "rm -rf dist",
+    "lint": "eslint src/ts/**/*.ts",
+    "lint:fix": "eslint src/ts/**/*.ts --fix",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,10 +17,20 @@
   "license": "ISC",
   "devDependencies": {
     "@types/chrome": "^0.1.32",
+    "@types/node": "^24.10.1",
+    "@types/webpack": "^5.28.5",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
     "copy-webpack-plugin": "^13.0.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-eslint-comments": "^3.2.0",
     "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "webpack": "^5.103.0",
     "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "ipaddr.js": "^2.3.0"
   }
 }

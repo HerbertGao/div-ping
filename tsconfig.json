@@ -12,7 +12,6 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "types": ["chrome"],
-    "noEmit": true,
     "sourceMap": true,
     "removeComments": false,
     "noUnusedLocals": true,

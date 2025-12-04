@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  lint-and-build:
+    name: Lint and Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Build project
+        run: npm run build
+
+      - name: Check build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not created"
+            exit 1
+          fi
+          if [ ! -f "dist/js/background.js" ]; then
+            echo "Error: background.js not built"
+            exit 1
+          fi
+          if [ ! -f "dist/js/content.js" ]; then
+            echo "Error: content.js not built"
+            exit 1
+          fi
+          if [ ! -f "dist/js/popup.js" ]; then
+            echo "Error: popup.js not built"
+            exit 1
+          fi
+          if [ ! -f "dist/js/options.js" ]; then
+            echo "Error: options.js not built"
+            exit 1
+          fi
+          echo "All required files built successfully"
+
+      - name: Upload build artifacts
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7

@@ -15,10 +15,10 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "src/js/background.js"
+    "service_worker": "js/background.js"
   },
   "action": {
-    "default_popup": "src/popup.html",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -33,12 +33,12 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/js/content.js"],
-      "css": ["src/css/content.css"],
+      "js": ["js/content.js"],
+      "css": ["css/content.css"],
       "run_at": "document_idle"
     }
   ],
-  "options_page": "src/options.html",
+  "options_page": "options.html",
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   }

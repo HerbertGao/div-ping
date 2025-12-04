@@ -1,12 +1,12 @@
+import { Project, WebhookConfig, MessageRequest, MessageResponse } from './types';
+
 // 元素选择模式
 class ElementSelector {
-  constructor() {
-    this.isSelecting = false;
-    this.highlightedElement = null;
-    this.overlay = null;
-  }
+  private isSelecting: boolean = false;
+  private highlightedElement: HTMLElement | null = null;
+  private overlay: HTMLElement | null = null;
 
-  start() {
+  public start(): void {
     if (this.isSelecting) return;
 
     this.isSelecting = true;
@@ -15,7 +15,7 @@ class ElementSelector {
     document.body.style.cursor = 'crosshair';
   }
 
-  stop() {
+  public stop(): void {
     if (!this.isSelecting) return;
 
     this.isSelecting = false;
@@ -24,7 +24,7 @@ class ElementSelector {
     document.body.style.cursor = '';
   }
 
-  createOverlay() {
+  private createOverlay(): void {
     this.overlay = document.createElement('div');
     this.overlay.id = 'div-ping-overlay';
     this.overlay.style.cssText = `
@@ -38,32 +38,34 @@ class ElementSelector {
     document.body.appendChild(this.overlay);
   }
 
-  removeOverlay() {
-    if (this.overlay && this.overlay.parentNode) {
+  private removeOverlay(): void {
+    if (this.overlay?.parentNode) {
       this.overlay.parentNode.removeChild(this.overlay);
       this.overlay = null;
     }
   }
 
-  handleMouseMove = (e) => {
+  private handleMouseMove = (e: MouseEvent): void => {
     if (!this.isSelecting) return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    const element = e.target;
+    const element = e.target as HTMLElement;
     if (element === this.overlay) return;
 
     this.highlightedElement = element;
     const rect = element.getBoundingClientRect();
 
-    this.overlay.style.top = (rect.top + window.scrollY) + 'px';
-    this.overlay.style.left = (rect.left + window.scrollX) + 'px';
-    this.overlay.style.width = rect.width + 'px';
-    this.overlay.style.height = rect.height + 'px';
+    if (this.overlay) {
+      this.overlay.style.top = (rect.top + window.scrollY) + 'px';
+      this.overlay.style.left = (rect.left + window.scrollX) + 'px';
+      this.overlay.style.width = rect.width + 'px';
+      this.overlay.style.height = rect.height + 'px';
+    }
   }
 
-  handleClick = (e) => {
+  private handleClick = (e: MouseEvent): void => {
     if (!this.isSelecting) return;
 
     e.preventDefault();
@@ -76,25 +78,25 @@ class ElementSelector {
     this.showConfigDialog(element);
   }
 
-  handleKeyDown = (e) => {
+  private handleKeyDown = (e: KeyboardEvent): void => {
     if (e.key === 'Escape' && this.isSelecting) {
       this.stop();
     }
   }
 
-  attachEventListeners() {
+  private attachEventListeners(): void {
     document.addEventListener('mousemove', this.handleMouseMove, true);
     document.addEventListener('click', this.handleClick, true);
     document.addEventListener('keydown', this.handleKeyDown, true);
   }
 
-  removeEventListeners() {
+  private removeEventListeners(): void {
     document.removeEventListener('mousemove', this.handleMouseMove, true);
     document.removeEventListener('click', this.handleClick, true);
     document.removeEventListener('keydown', this.handleKeyDown, true);
   }
 
-  getSelector(element) {
+  private getSelector(element: HTMLElement): string {
     // 优先使用ID
     if (element.id) {
       return `#${element.id}`;
@@ -124,9 +126,11 @@ class ElementSelector {
     return tag;
   }
 
-  showConfigDialog(element, existingProject = null) {
-    const selector = existingProject ? existingProject.selector : this.getSelector(element);
-    const initialContent = existingProject ? existingProject.lastContent || this.getElementContent(element) : this.getElementContent(element);
+  public showConfigDialog(element: HTMLElement | null, existingProject?: Project): void {
+    const selector = existingProject ? existingProject.selector : this.getSelector(element!);
+    const initialContent = existingProject
+      ? existingProject.lastContent || this.getElementContent(element!)
+      : this.getElementContent(element!);
 
     // 创建配置对话框
     const dialog = document.createElement('div');
@@ -238,7 +242,7 @@ class ElementSelector {
               font-size: 13px;
               font-family: monospace;
               min-height: 50px;
-            ">${existingProject && existingProject.webhook?.headers ? this.escapeHtml(existingProject.webhook.headers) : ''}</textarea>
+            ">${existingProject && existingProject.webhook?.headers ? this.escapeHtml(typeof existingProject.webhook.headers === 'string' ? existingProject.webhook.headers : JSON.stringify(existingProject.webhook.headers)) : ''}</textarea>
           </div>
 
           <div style="margin-bottom: 0;">
@@ -251,7 +255,7 @@ class ElementSelector {
               font-size: 13px;
               font-family: monospace;
               min-height: 60px;
-            ">${existingProject && existingProject.webhook?.body ? this.escapeHtml(existingProject.webhook.body) : ''}</textarea>
+            ">${existingProject && existingProject.webhook?.body ? this.escapeHtml(typeof existingProject.webhook.body === 'string' ? existingProject.webhook.body : JSON.stringify(existingProject.webhook.body)) : ''}</textarea>
             <div style="font-size: 11px; color: #999; margin-top: 4px;">
               留空则使用默认格式
             </div>
@@ -299,11 +303,11 @@ class ElementSelector {
     document.body.appendChild(dialog);
 
     // 获取元素引用
-    const browserNotificationCheckbox = dialog.querySelector('#browserNotification');
-    const enableWebhook = dialog.querySelector('#enableWebhook');
-    const webhookConfig = dialog.querySelector('#webhookConfig');
-    const testBrowserBtn = dialog.querySelector('#testBrowserNotification');
-    const testWebhookBtn = dialog.querySelector('#testWebhook');
+    const browserNotificationCheckbox = dialog.querySelector<HTMLInputElement>('#browserNotification')!;
+    const enableWebhook = dialog.querySelector<HTMLInputElement>('#enableWebhook')!;
+    const webhookConfig = dialog.querySelector<HTMLElement>('#webhookConfig')!;
+    const testBrowserBtn = dialog.querySelector<HTMLButtonElement>('#testBrowserNotification')!;
+    const testWebhookBtn = dialog.querySelector<HTMLButtonElement>('#testWebhook')!;
 
     // 浏览器通知开关 - 控制测试按钮状态
     browserNotificationCheckbox.addEventListener('change', () => {
@@ -320,10 +324,10 @@ class ElementSelector {
     testBrowserBtn.addEventListener('click', () => {
       chrome.runtime.sendMessage({
         action: 'testBrowserNotification'
-      }, (response) => {
+      }, (response: MessageResponse) => {
         if (chrome.runtime.lastError) {
           alert('❌ 通信失败\n\n错误: ' + chrome.runtime.lastError.message);
-        } else if (response && response.success) {
+        } else if (response?.success) {
           // 通知已发送，无需额外提示（用户会在系统中看到通知）
           console.log('Test notification sent successfully');
         } else {
@@ -334,10 +338,10 @@ class ElementSelector {
 
     // 测试Webhook按钮
     testWebhookBtn.addEventListener('click', async () => {
-      const webhookUrl = dialog.querySelector('#webhookUrl').value.trim();
-      const webhookMethod = dialog.querySelector('#webhookMethod').value;
-      const webhookHeaders = dialog.querySelector('#webhookHeaders').value.trim();
-      const webhookBody = dialog.querySelector('#webhookBody').value.trim();
+      const webhookUrl = dialog.querySelector<HTMLInputElement>('#webhookUrl')!.value.trim();
+      const webhookMethod = dialog.querySelector<HTMLSelectElement>('#webhookMethod')!.value;
+      const webhookHeaders = dialog.querySelector<HTMLTextAreaElement>('#webhookHeaders')!.value.trim();
+      const webhookBody = dialog.querySelector<HTMLTextAreaElement>('#webhookBody')!.value.trim();
 
       if (!webhookUrl) {
         alert('请先填写Webhook URL');
@@ -350,17 +354,19 @@ class ElementSelector {
 
       try {
         // 准备webhook配置
-        const webhookConfig = {
+        const webhookConfig: WebhookConfig = {
+          enabled: true,
           url: webhookUrl,
-          method: webhookMethod
+          method: webhookMethod as 'GET' | 'POST' | 'PUT'
         };
 
         // 添加headers（如果有）
         if (webhookHeaders) {
           try {
-            webhookConfig.headers = JSON.parse(webhookHeaders);
+            const parsedHeaders = JSON.parse(webhookHeaders);
+            webhookConfig.headers = typeof parsedHeaders === 'string' ? parsedHeaders : JSON.stringify(parsedHeaders);
           } catch (error) {
-            alert('请求头JSON格式错误: ' + error.message);
+            alert('请求头JSON格式错误: ' + (error instanceof Error ? error.message : 'Unknown error'));
             testWebhookBtn.disabled = false;
             testWebhookBtn.textContent = '测试';
             return;
@@ -370,9 +376,10 @@ class ElementSelector {
         // 添加body（如果有）
         if (webhookBody) {
           try {
-            webhookConfig.body = JSON.parse(webhookBody);
+            const parsedBody = JSON.parse(webhookBody);
+            webhookConfig.body = typeof parsedBody === 'string' ? parsedBody : JSON.stringify(parsedBody);
           } catch (error) {
-            alert('请求体JSON格式错误: ' + error.message);
+            alert('请求体JSON格式错误: ' + (error instanceof Error ? error.message : 'Unknown error'));
             testWebhookBtn.disabled = false;
             testWebhookBtn.textContent = '测试';
             return;
@@ -383,8 +390,8 @@ class ElementSelector {
         chrome.runtime.sendMessage({
           action: 'testWebhook',
           config: webhookConfig
-        }, (response) => {
-          if (response && response.success) {
+        }, (response: MessageResponse) => {
+          if (response?.success && response.status !== undefined) {
             if (response.status >= 200 && response.status < 300) {
               alert(`✓ 测试成功！\n\n状态码: ${response.status} ${response.statusText}\n\nWebhook服务器已成功接收请求`);
             } else {
@@ -399,25 +406,26 @@ class ElementSelector {
           testWebhookBtn.textContent = '测试';
         });
       } catch (error) {
-        alert('测试失败: ' + error.message);
+        alert('测试失败: ' + (error instanceof Error ? error.message : 'Unknown error'));
         testWebhookBtn.disabled = false;
         testWebhookBtn.textContent = '测试';
       }
     });
 
     // 取消按钮
-    dialog.querySelector('#cancelBtn').addEventListener('click', () => {
+    dialog.querySelector<HTMLButtonElement>('#cancelBtn')!.addEventListener('click', () => {
       dialog.remove();
     });
 
     // 确认按钮
-    dialog.querySelector('#confirmBtn').addEventListener('click', () => {
+    dialog.querySelector<HTMLButtonElement>('#confirmBtn')!.addEventListener('click', () => {
       const webhookEnabled = enableWebhook.checked;
-      const config = {
-        name: dialog.querySelector('#projectName').value,
-        selector: dialog.querySelector('#elementSelector').value,
-        interval: parseInt(dialog.querySelector('#refreshInterval').value) * 1000,
-        browserNotification: dialog.querySelector('#browserNotification').checked,
+      const config: MessageRequest = {
+        action: existingProject ? 'updateProject' : 'elementSelected',
+        name: dialog.querySelector<HTMLInputElement>('#projectName')!.value,
+        selector: dialog.querySelector<HTMLInputElement>('#elementSelector')!.value,
+        interval: parseInt(dialog.querySelector<HTMLInputElement>('#refreshInterval')!.value) * 1000,
+        browserNotification: dialog.querySelector<HTMLInputElement>('#browserNotification')!.checked,
         url: existingProject ? existingProject.url : window.location.href,
         initialContent: initialContent
       };
@@ -426,10 +434,10 @@ class ElementSelector {
       if (webhookEnabled) {
         config.webhook = {
           enabled: true,
-          url: dialog.querySelector('#webhookUrl').value,
-          method: dialog.querySelector('#webhookMethod').value,
-          headers: dialog.querySelector('#webhookHeaders').value.trim(),
-          body: dialog.querySelector('#webhookBody').value.trim()
+          url: dialog.querySelector<HTMLInputElement>('#webhookUrl')!.value,
+          method: dialog.querySelector<HTMLSelectElement>('#webhookMethod')!.value as 'GET' | 'POST' | 'PUT',
+          headers: dialog.querySelector<HTMLTextAreaElement>('#webhookHeaders')!.value.trim(),
+          body: dialog.querySelector<HTMLTextAreaElement>('#webhookBody')!.value.trim()
         };
       } else {
         config.webhook = { enabled: false };
@@ -441,14 +449,11 @@ class ElementSelector {
       }
 
       // 发送到background
-      chrome.runtime.sendMessage({
-        action: existingProject ? 'updateProject' : 'elementSelected',
-        ...config
-      }, (response) => {
+      chrome.runtime.sendMessage(config, (response: MessageResponse) => {
         if (chrome.runtime.lastError) {
           console.error('Failed to save project:', chrome.runtime.lastError);
           alert('保存失败: ' + chrome.runtime.lastError.message);
-        } else if (response && response.success) {
+        } else if (response?.success) {
           console.log('Project saved successfully:', response.projectId);
           // 显示成功提示
           const successMsg = document.createElement('div');
@@ -474,12 +479,12 @@ class ElementSelector {
     });
   }
 
-  getElementContent(element) {
+  public getElementContent(element: HTMLElement): string {
     // 获取元素的文本内容和HTML
     return element.innerText || element.textContent || element.innerHTML;
   }
 
-  escapeHtml(text) {
+  private escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -490,7 +495,7 @@ class ElementSelector {
 const selector = new ElementSelector();
 
 // 监听来自popup的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
   if (message.action === 'startSelection') {
     selector.start();
     sendResponse({ success: true });
@@ -498,22 +503,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 显示编辑对话框
     try {
       // 先尝试找到元素以获取当前内容
-      let element = null;
+      let element: HTMLElement | null = null;
       try {
-        element = document.querySelector(message.project.selector);
-      } catch (e) {
+        if (message.project) {
+          element = document.querySelector<HTMLElement>(message.project.selector);
+        }
+      } catch {
         // 选择器可能无效，使用保存的内容
       }
       selector.showConfigDialog(element, message.project);
       sendResponse({ success: true });
     } catch (error) {
-      sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
     return true;
   } else if (message.action === 'checkElement') {
     // 检查元素内容
     try {
-      const element = document.querySelector(message.selector);
+      if (!message.selector) {
+        sendResponse({ success: false, error: 'Selector is required' });
+        return true;
+      }
+      const element = document.querySelector<HTMLElement>(message.selector);
       if (element) {
         const content = selector.getElementContent(element);
         sendResponse({ success: true, content });
@@ -521,8 +532,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: 'Element not found' });
       }
     } catch (error) {
-      sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
     return true; // 保持消息通道开放
   }
+  return false;
 });

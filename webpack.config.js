@@ -1,7 +1,13 @@
-const path = require('path');
-const CopyPlugin = require('copy-webpack-plugin');
+import path from 'path';
+import CopyPlugin from 'copy-webpack-plugin';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/** @type {import('webpack').Configuration} */
+const config = {
   mode: 'development',
   devtool: 'inline-source-map',
   entry: {
@@ -40,3 +46,5 @@ module.exports = {
     })
   ]
 };
+
+export default config;
