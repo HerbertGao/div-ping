@@ -1,0 +1,8 @@
+/* Content script styles */
+#div-ping-overlay {
+  box-sizing: border-box;
+}
+
+#div-ping-config-dialog * {
+  box-sizing: border-box;
+}

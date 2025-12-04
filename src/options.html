@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Div Ping - 设置</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="url"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="url"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 8px;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .checkbox-group label {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .help-text {
+      font-size: 13px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      padding-top: 24px;
+      border-top: 1px solid #eee;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #45a049;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .btn-danger {
+      background: #f44336;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #da190b;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .status-message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196F3;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #1976D2;
+    }
+
+    .info-box p {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Div Ping 设置</h1>
+    <p class="subtitle">配置扩展的默认行为和通知选项</p>
+
+    <div class="status-message" id="statusMessage"></div>
+
+    <div class="section">
+      <h2 class="section-title">统计信息</h2>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">监控项目总数</div>
+          <div class="stat-value" id="totalProjects">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">活动监控</div>
+          <div class="stat-value" id="activeProjects">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">已暂停</div>
+          <div class="stat-value" id="pausedProjects">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">默认设置</h2>
+
+      <div class="form-group">
+        <label for="defaultInterval">默认刷新间隔(秒)</label>
+        <input type="number" id="defaultInterval" min="5" max="3600" value="30">
+        <div class="help-text">新建监控项目时的默认刷新间隔</div>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="defaultBrowserNotification" checked>
+        <label for="defaultBrowserNotification">默认启用浏览器通知</label>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="defaultWebhook">
+        <label for="defaultWebhook">默认启用Webhook通知</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Webhook配置</h2>
+
+      <div class="info-box">
+        <h3>支持的变量</h3>
+        <p>在Webhook URL、请求头和请求体中可以使用以下变量:</p>
+        <pre style="background: white; padding: 8px; margin-top: 8px; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{projectId}}      - 项目ID
+{{projectName}}    - 项目名称
+{{url}}            - 页面URL
+{{selector}}       - CSS选择器
+{{oldContent}}     - 旧内容
+{{newContent}}     - 新内容
+{{timestamp}}      - ISO时间戳</pre>
+      </div>
+
+      <div class="info-box" style="margin-top: 16px;">
+        <h3>示例配置</h3>
+        <p><strong>GET请求示例:</strong></p>
+        <pre style="background: white; padding: 8px; margin-top: 4px; border-radius: 4px; font-size: 11px; overflow-x: auto;">URL: https://api.example.com/notify?project={{projectName}}&old={{oldContent}}&new={{newContent}}</pre>
+
+        <p style="margin-top: 12px;"><strong>POST请求示例:</strong></p>
+        <pre style="background: white; padding: 8px; margin-top: 4px; border-radius: 4px; font-size: 11px; overflow-x: auto;">URL: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+Body: {
+  "text": "{{projectName}} 检测到变化: {{newContent}}"
+}</pre>
+
+        <p style="margin-top: 12px;"><strong>自定义请求头示例:</strong></p>
+        <pre style="background: white; padding: 8px; margin-top: 4px; border-radius: 4px; font-size: 11px; overflow-x: auto;">Headers: {
+  "Authorization": "Bearer YOUR_TOKEN",
+  "X-Project": "{{projectName}}"
+}</pre>
+      </div>
+
+      <div class="form-group">
+        <label for="defaultWebhookUrl">默认Webhook URL</label>
+        <input type="url" id="defaultWebhookUrl" placeholder="https://example.com/webhook">
+        <div class="help-text">新建监控项目时的默认Webhook URL</div>
+      </div>
+
+      <div class="form-group">
+        <label for="webhookTimeout">Webhook请求超时(秒)</label>
+        <input type="number" id="webhookTimeout" min="5" max="60" value="10">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">高级选项</h2>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="autoReload" checked>
+        <label for="autoReload">自动重新加载页面(当URL改变时)</label>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="soundNotification">
+        <label for="soundNotification">播放通知声音</label>
+      </div>
+
+      <div class="form-group">
+        <label for="maxRetries">最大重试次数(检查失败时)</label>
+        <input type="number" id="maxRetries" min="0" max="10" value="3">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">数据管理</h2>
+
+      <div class="form-group">
+        <button class="btn-secondary" id="exportData">导出配置</button>
+        <button class="btn-secondary" id="importData" style="margin-left: 8px;">导入配置</button>
+        <button class="btn-danger" id="clearData" style="margin-left: 8px;">清除所有数据</button>
+        <input type="file" id="importFile" accept=".json" style="display: none;">
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn-primary" id="saveBtn">保存设置</button>
+      <button class="btn-secondary" id="resetBtn">恢复默认</button>
+    </div>
+  </div>
+
+  <script src="js/options.js"></script>
+</body>
+</html>
