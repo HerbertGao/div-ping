@@ -575,6 +575,19 @@
   "webhookBodyJsonError": {
     "message": "Webhook body JSON format error or variable substitution failed: "
   },
+  "webhookBodySizeExceeded": {
+    "message": "Webhook body size ($size$ bytes) exceeds maximum limit ($maxSize$ bytes) after variable substitution",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "12345"
+      },
+      "maxSize": {
+        "content": "$2",
+        "example": "10000"
+      }
+    }
+  },
   "webhookRedirectBlocked": {
     "message": "Webhook redirects are not allowed. If you need to access the redirect target, please configure the target URL directly.$location$",
     "placeholders": {

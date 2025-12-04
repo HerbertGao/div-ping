@@ -85,13 +85,6 @@ All 74 tests passing with comprehensive coverage for SSRF validation, variable r
 - [ ] Add JSDoc documentation - for public APIs
 - [ ] Content length limits - prevent storage exhaustion
 
-### Completed
-
-- [x] ~~Input validation~~ - ✅ Comprehensive validation module implemented (validation.ts)
-- [x] ~~Optimize waitForTabLoad~~ - ✅ Now uses async/await instead of recursive callbacks
-- [x] ~~Add unit tests~~ - ✅ 74 tests covering SSRF, validation, storage, i18n
-- [x] ~~i18n support~~ - ✅ Full internationalization with custom ESLint enforcement
-
 ## License
 
 MIT License

@@ -136,7 +136,7 @@ export function validateInterval(interval: number): ValidationResult {
     };
   }
 
-  if (interval > 86400000) { // 24 hours
+  if (interval > LIMITS.MAX_INTERVAL_MS) {
     return {
       valid: false,
       error: 'Interval cannot exceed 24 hours'

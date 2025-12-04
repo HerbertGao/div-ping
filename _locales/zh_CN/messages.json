@@ -575,6 +575,19 @@
   "webhookBodyJsonError": {
     "message": "Webhook body JSON格式错误或变量替换失败: "
   },
+  "webhookBodySizeExceeded": {
+    "message": "Webhook body大小（$size$ 字节）在变量替换后超过最大限制（$maxSize$ 字节）",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "12345"
+      },
+      "maxSize": {
+        "content": "$2",
+        "example": "10000"
+      }
+    }
+  },
   "webhookRedirectBlocked": {
     "message": "Webhook不允许重定向。如需访问重定向后的地址，请直接配置目标URL。$location$",
     "placeholders": {

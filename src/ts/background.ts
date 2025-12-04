@@ -789,6 +789,12 @@ class MonitorManager {
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
 
+          // 验证变量替换后的body大小
+          const finalBodySize = new Blob([fetchOptions.body]).size;
+          if (finalBodySize > LIMITS.MAX_WEBHOOK_BODY_SIZE) {
+            throw new Error(t('webhookBodySizeExceeded', [finalBodySize.toString(), LIMITS.MAX_WEBHOOK_BODY_SIZE.toString()]));
+          }
+
           // Set Content-Type header for JSON body if not already set
           if (!headers['Content-Type'] && !headers['content-type']) {
             headers['Content-Type'] = 'application/json';
@@ -912,6 +918,12 @@ class MonitorManager {
           // 验证JSON并设置body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
+
+          // 验证变量替换后的body大小
+          const finalBodySize = new Blob([fetchOptions.body]).size;
+          if (finalBodySize > LIMITS.MAX_WEBHOOK_BODY_SIZE) {
+            throw new Error(t('webhookBodySizeExceeded', [finalBodySize.toString(), LIMITS.MAX_WEBHOOK_BODY_SIZE.toString()]));
+          }
 
           // Set Content-Type header for JSON body if not already set
           if (!headers['Content-Type'] && !headers['content-type']) {
