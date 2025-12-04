@@ -1,4 +1,4 @@
-import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse } from './types';
+import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse, Settings } from './types';
 import * as ipaddr from 'ipaddr.js';
 import { storageManager } from './storageManager';
 import { TIMEOUTS, LIMITS } from './constants';
@@ -717,6 +717,10 @@ class MonitorManager {
       throw new Error('Webhook URL is required');
     }
 
+    // 获取用户配置的超时设置
+    const settings = await storageManager.getSettings<Settings>();
+    const timeoutMs = (settings.webhookTimeout || 10) * 1000; // 转换为毫秒，默认10秒
+
     // 验证Webhook URL（防止SSRF）
     try {
       this.validateWebhookUrl(webhook.url);
@@ -810,7 +814,7 @@ class MonitorManager {
 
     // 发送请求（带超时控制）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.WEBHOOK_REQUEST);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(url, {
@@ -833,7 +837,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error(t('webhookTimeoutError', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
+        throw new Error(t('webhookTimeoutError', [(timeoutMs / 1000).toString()]));
       }
       throw error;
     }
@@ -846,6 +850,10 @@ class MonitorManager {
     if (!config.url) {
       throw new Error('Webhook URL is required');
     }
+
+    // 获取用户配置的超时设置
+    const settings = await storageManager.getSettings<Settings>();
+    const timeoutMs = (settings.webhookTimeout || 10) * 1000; // 转换为毫秒，默认10秒
 
     // 验证Webhook URL（防止SSRF）
     try {
@@ -940,7 +948,7 @@ class MonitorManager {
 
     // 发送请求（带超时控制）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.WEBHOOK_REQUEST);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(url, {
@@ -960,7 +968,7 @@ class MonitorManager {
     } catch (error) {
       clearTimeout(timeoutId);
       if ((error as Error).name === 'AbortError') {
-        throw new Error(t('webhookTimeoutError', [(TIMEOUTS.WEBHOOK_REQUEST / 1000).toString()]));
+        throw new Error(t('webhookTimeoutError', [(timeoutMs / 1000).toString()]));
       }
       throw error;
     }
