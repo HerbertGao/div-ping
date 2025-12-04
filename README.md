@@ -34,7 +34,7 @@
 
 **GET请求:**
 
-```
+```text
 https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 ```
 
@@ -53,6 +53,28 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 **监控不工作?** 检查刷新间隔和CSS选择器是否正确
 
 **调试方法:** `chrome://extensions/` → Service Worker 查看日志
+
+## 开发待办
+
+### 高优先级
+
+- [ ] 将setInterval改为chrome.alarms API - Service Worker可能被终止导致定时器丢失
+- [ ] 修复storage竞态条件 - 多个监控同时读写可能导致数据丢失
+- [ ] 优化标签页创建策略 - 每次检测都创建新标签页消耗大量资源
+
+### 中优先级
+
+- [ ] 改为动态权限请求 - 当前`<all_urls>`权限过大
+- [ ] 程序化注入content script - 避免在所有页面加载脚本
+- [ ] 添加Webhook速率限制 - 防止频繁触发
+- [ ] 实现输入验证 - 项目名称、选择器、间隔等
+- [ ] 添加错误重试机制 - 网络失败时自动重试
+
+### 低优先级
+
+- [ ] 提取魔法数字为常量
+- [ ] 添加JSDoc文档注释
+- [ ] 支持国际化(i18n)
 
 ## 许可证
 
