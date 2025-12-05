@@ -69,6 +69,9 @@ class MonitorManager {
   // Add tab to cache with size limit enforcement
   private addToTabCache(url: string, tabId: number): void {
     // If cache is full, remove oldest entry (FIFO strategy)
+    // Note: FIFO is used instead of LRU for simplicity. Given typical monitoring patterns
+    // where projects are checked at regular intervals, FIFO provides acceptable performance.
+    // LRU would be beneficial for irregular access patterns but adds implementation complexity.
     if (this.tabCache.size >= LIMITS.MAX_TAB_CACHE_SIZE) {
       // Map iteration order is insertion-order (ES2015 spec), so first key is the oldest entry
       const firstKey = this.tabCache.keys().next().value;
