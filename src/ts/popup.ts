@@ -2,6 +2,42 @@ import { initI18nForHTML, t } from './i18n';
 import { storageManager } from './storageManager';
 import { LogEntry, MessageResponse, Project } from './types';
 
+/**
+ * Ensure content script is injected into a tab before sending messages
+ * @param tabId - The tab ID to inject the script into
+ * @returns Promise<boolean> - Whether injection was successful
+ */
+async function ensureContentScriptInjected(tabId: number): Promise<boolean> {
+  try {
+    // Try to ping the content script first
+    const response = await chrome.tabs.sendMessage(tabId, { action: 'ping' }).catch(() => null);
+
+    // If content script responds, it's already injected
+    if (response) {
+      return true;
+    }
+
+    // Content script not found, inject it
+    await chrome.scripting.insertCSS({
+      target: { tabId },
+      files: ['css/content.css']
+    });
+
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['js/content.js']
+    });
+
+    // Wait a bit for script to initialize
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    return true;
+  } catch (error) {
+    console.error('Failed to inject content script:', error);
+    return false;
+  }
+}
+
 // Monitor project management
 class ProjectManager {
   private projects: Project[] = [];
@@ -187,6 +223,13 @@ class ProjectManager {
 
     // Send message to content script to show edit dialog
     if (targetTab.id !== undefined) {
+      // Ensure content script is injected first
+      const injected = await ensureContentScriptInjected(targetTab.id);
+      if (!injected) {
+        alert(t('cannotOpenEditDialog'));
+        return;
+      }
+
       chrome.tabs.sendMessage(targetTab.id, {
         action: 'editProject',
         project: project
@@ -462,6 +505,13 @@ if (selectElementBtn) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (!tab || !tab.id) {
+      alert(t('cannotStartSelection'));
+      return;
+    }
+
+    // Ensure content script is injected first
+    const injected = await ensureContentScriptInjected(tab.id);
+    if (!injected) {
       alert(t('cannotStartSelection'));
       return;
     }

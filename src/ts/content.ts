@@ -563,7 +563,10 @@ const selector = new ElementSelector();
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
-  if (message.action === 'startSelection') {
+  if (message.action === 'ping') {
+    // Respond to ping to indicate content script is loaded
+    sendResponse({ success: true });
+  } else if (message.action === 'startSelection') {
     selector.start();
     sendResponse({ success: true });
   } else if (message.action === 'editProject') {
