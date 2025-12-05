@@ -7,6 +7,7 @@
  */
 
 import { LIMITS } from './constants';
+import ipaddr from 'ipaddr.js';
 
 export interface ValidationResult {
   valid: boolean;
@@ -185,4 +186,78 @@ export function validateInterval(interval: number): ValidationResult {
   }
 
   return { valid: true };
+}
+
+/**
+ * Validate webhook URL for SSRF (Server-Side Request Forgery) prevention
+ * Checks for malicious URLs that could access internal resources
+ */
+export function validateWebhookUrl(urlString: string): ValidationResult {
+  try {
+    const url = new URL(urlString);
+
+    // Only allow HTTP and HTTPS protocols
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, error: 'Only HTTP and HTTPS protocols are allowed' };
+    }
+
+    // Get hostname
+    const hostname = url.hostname.toLowerCase();
+
+    // Block specific localhost hostnames
+    if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+      return { valid: false, error: 'Localhost addresses are blocked for security' };
+    }
+
+    // Block internal domain suffixes
+    if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+      return { valid: false, error: 'Internal domain addresses are blocked for security' };
+    }
+
+    // Try to parse as IP address
+    if (ipaddr.isValid(hostname)) {
+      const addr = ipaddr.parse(hostname);
+
+      // Check IP address range
+      const range = addr.range();
+
+      // Forbidden IP address ranges
+      const forbiddenRanges = [
+        'unspecified',    // 0.0.0.0 or ::
+        'broadcast',      // 255.255.255.255
+        'multicast',      // 224.0.0.0/4 or ff00::/8
+        'linkLocal',      // 169.254.0.0/16 or fe80::/10
+        'loopback',       // 127.0.0.0/8 or ::1
+        'private',        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 or fc00::/7
+        'reserved',       // Reserved addresses (includes TEST-NET ranges)
+        'carrierGradeNat', // 100.64.0.0/10
+        'uniqueLocal'     // IPv6 unique local addresses fc00::/7
+      ];
+
+      if (forbiddenRanges.includes(range)) {
+        return { valid: false, error: `IP range '${range}' is blocked for security` };
+      }
+
+      // IPv6 special checks: IPv4-mapped addresses
+      if (addr.kind() === 'ipv6') {
+        const ipv6Addr = addr as ipaddr.IPv6;
+        if (ipv6Addr.isIPv4MappedAddress()) {
+          // Get mapped IPv4 address and check recursively
+          const ipv4 = ipv6Addr.toIPv4Address();
+          const ipv4Range = ipv4.range();
+
+          if (forbiddenRanges.includes(ipv4Range)) {
+            return { valid: false, error: `IPv4-mapped address range '${ipv4Range}' is blocked for security` };
+          }
+        }
+      }
+    }
+
+    return { valid: true };
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return { valid: false, error: 'Invalid URL format' };
+    }
+    throw error;
+  }
 }

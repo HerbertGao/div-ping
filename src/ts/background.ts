@@ -1,9 +1,8 @@
 import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse, Settings } from './types';
-import * as ipaddr from 'ipaddr.js';
 import { storageManager } from './storageManager';
 import { TIMEOUTS, LIMITS } from './constants';
 import { t } from './i18n';
-import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody, validateWebhookHeaders } from './validation';
+import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
 
 // Monitor info interface (no longer needs intervalId)
 interface MonitorInfo {
@@ -81,90 +80,6 @@ class MonitorManager {
     this.tabCache.set(url, tabId);
   }
 
-  // Validate webhook URL security (prevent SSRF attacks)
-  private validateWebhookUrl(urlString: string): boolean {
-    try {
-      const url = new URL(urlString);
-
-      // Only allow HTTP and HTTPS protocols
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        throw new Error(t('ssrfHttpOnly'));
-      }
-
-      // Warn about non-HTTPS URLs
-      if (url.protocol === 'http:') {
-        console.warn(t('ssrfHttpWarning'));
-      }
-
-      // Get hostname
-      const hostname = url.hostname.toLowerCase();
-
-      // Block specific localhost hostnames
-      if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-        throw new Error(t('ssrfLocalhostBlocked'));
-      }
-
-      // Block internal domain suffixes
-      if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-        throw new Error(t('ssrfInternalDomainBlocked'));
-      }
-
-      // Try to parse as IP address
-      if (ipaddr.isValid(hostname)) {
-        const addr = ipaddr.parse(hostname);
-
-        // Check IP address range
-        const range = addr.range();
-
-        // Forbidden IP address ranges
-        const forbiddenRanges = [
-          'unspecified',    // 0.0.0.0 or ::
-          'broadcast',      // 255.255.255.255
-          'multicast',      // 224.0.0.0/4 or ff00::/8
-          'linkLocal',      // 169.254.0.0/16 or fe80::/10
-          'loopback',       // 127.0.0.0/8 or ::1
-          'private',        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 or fc00::/7
-          'reserved',       // Reserved addresses
-          'carrierGradeNat', // 100.64.0.0/10
-          'uniqueLocal'     // IPv6 unique local addresses fc00::/7
-        ];
-
-        if (forbiddenRanges.includes(range)) {
-          throw new Error(t('ssrfIpRangeBlocked', [range]));
-        }
-
-        // Note: ipaddr.js's 'reserved' range already includes:
-        // - 192.0.0.0/24 (IETF Protocol Assignments, RFC5735)
-        // - 192.0.2.0/24 (TEST-NET-1, RFC5737)
-        // - 198.18.0.0/15 (Benchmarking, RFC2544)
-        // - 198.51.100.0/24 (TEST-NET-2, RFC5737)
-        // - 203.0.113.0/24 (TEST-NET-3, RFC5737)
-        // - 240.0.0.0/4 (Future use)
-        // No additional manual checks needed since we already block 'reserved' above
-
-        // IPv6 special checks: IPv4-mapped addresses
-        if (addr.kind() === 'ipv6') {
-          const ipv6Addr = addr as ipaddr.IPv6;
-          if (ipv6Addr.isIPv4MappedAddress()) {
-            // Get mapped IPv4 address and check recursively
-            const ipv4 = ipv6Addr.toIPv4Address();
-            const ipv4Range = ipv4.range();
-
-            if (forbiddenRanges.includes(ipv4Range)) {
-              throw new Error(t('ssrfIpv4MappedBlocked', [ipv4Range]));
-            }
-          }
-        }
-      }
-
-      return true;
-    } catch (error) {
-      if (error instanceof TypeError) {
-        throw new Error(t('invalidUrlFormat'));
-      }
-      throw error;
-    }
-  }
 
   private async init(): Promise<void> {
     // Load saved projects and start active monitors
@@ -746,11 +661,10 @@ class MonitorManager {
     const timeoutMs = (settings.webhookTimeout || 10) * 1000; // Convert to milliseconds, default 10 seconds
 
     // Validate webhook URL (prevent SSRF)
-    try {
-      this.validateWebhookUrl(webhook.url);
-    } catch (error) {
-      console.error(t('webhookUrlValidationFailed'), error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(t('webhookUrlValidationFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
+    const urlValidation = validateWebhookUrl(webhook.url);
+    if (!urlValidation.valid) {
+      console.error(t('webhookUrlValidationFailed'), urlValidation.error);
+      throw new Error(t('webhookUrlValidationFailedWithError', [urlValidation.error || 'Unknown error']));
     }
 
     // Available variables
@@ -768,11 +682,10 @@ class MonitorManager {
     let url = this.replaceVariablesInUrl(webhook.url, variables);
 
     // Validate URL again after substitution
-    try {
-      this.validateWebhookUrl(url);
-    } catch (error) {
-      console.error(t('webhookUrlAfterSubstitutionFailed'), error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
+    const urlAfterSubValidation = validateWebhookUrl(url);
+    if (!urlAfterSubValidation.valid) {
+      console.error(t('webhookUrlAfterSubstitutionFailed'), urlAfterSubValidation.error);
+      throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [urlAfterSubValidation.error || 'Unknown error']));
     }
 
     // Prepare request configuration
@@ -887,11 +800,10 @@ class MonitorManager {
     const timeoutMs = (settings.webhookTimeout || 10) * 1000; // Convert to milliseconds, default 10 seconds
 
     // Validate webhook URL (prevent SSRF)
-    try {
-      this.validateWebhookUrl(config.url);
-    } catch (error) {
-      console.error(t('webhookUrlValidationFailed'), error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(t('webhookUrlValidationFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
+    const testUrlValidation = validateWebhookUrl(config.url);
+    if (!testUrlValidation.valid) {
+      console.error(t('webhookUrlValidationFailed'), testUrlValidation.error);
+      throw new Error(t('webhookUrlValidationFailedWithError', [testUrlValidation.error || 'Unknown error']));
     }
 
     // Test variables
@@ -909,11 +821,10 @@ class MonitorManager {
     let url = this.replaceVariablesInUrl(config.url, variables);
 
     // Validate URL again after substitution
-    try {
-      this.validateWebhookUrl(url);
-    } catch (error) {
-      console.error(t('webhookUrlAfterSubstitutionFailed'), error instanceof Error ? error.message : 'Unknown error');
-      throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
+    const urlAfterSubValidation = validateWebhookUrl(url);
+    if (!urlAfterSubValidation.valid) {
+      console.error(t('webhookUrlAfterSubstitutionFailed'), urlAfterSubValidation.error);
+      throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [urlAfterSubValidation.error || 'Unknown error']));
     }
 
     // Prepare request configuration
