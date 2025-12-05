@@ -132,35 +132,14 @@ class MonitorManager {
           throw new Error(t('ssrfIpRangeBlocked', [range]));
         }
 
-        // IPv4 special checks: test networks and benchmark networks
-        if (addr.kind() === 'ipv4') {
-          const bytes = addr.toByteArray();
-
-          // 192.0.0.0/24 (IETF Protocol Assignments)
-          if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 0) {
-            throw new Error(t('ssrfIetfAddressBlocked'));
-          }
-
-          // 192.0.2.0/24 (TEST-NET-1)
-          if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 2) {
-            throw new Error(t('ssrfTestNetworkBlocked'));
-          }
-
-          // 198.18.0.0/15 (Benchmarking)
-          if (bytes[0] === 198 && (bytes[1] === 18 || bytes[1] === 19)) {
-            throw new Error(t('ssrfBenchmarkBlocked'));
-          }
-
-          // 198.51.100.0/24 (TEST-NET-2)
-          if (bytes[0] === 198 && bytes[1] === 51 && bytes[2] === 100) {
-            throw new Error(t('ssrfTestNetworkBlocked'));
-          }
-
-          // 203.0.113.0/24 (TEST-NET-3)
-          if (bytes[0] === 203 && bytes[1] === 0 && bytes[2] === 113) {
-            throw new Error(t('ssrfTestNetworkBlocked'));
-          }
-        }
+        // Note: ipaddr.js's 'reserved' range already includes:
+        // - 192.0.0.0/24 (IETF Protocol Assignments, RFC5735)
+        // - 192.0.2.0/24 (TEST-NET-1, RFC5737)
+        // - 198.18.0.0/15 (Benchmarking, RFC2544)
+        // - 198.51.100.0/24 (TEST-NET-2, RFC5737)
+        // - 203.0.113.0/24 (TEST-NET-3, RFC5737)
+        // - 240.0.0.0/4 (Future use)
+        // No additional manual checks needed since we already block 'reserved' above
 
         // IPv6 special checks: IPv4-mapped addresses
         if (addr.kind() === 'ipv6') {

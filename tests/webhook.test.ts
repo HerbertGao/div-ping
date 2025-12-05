@@ -1,4 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
+import ipaddr from 'ipaddr.js';
 
 /**
  * Test utilities for webhook variable replacement and URL validation
@@ -193,145 +194,123 @@ describe('Webhook Variable Replacement', () => {
   });
 });
 
-describe('SSRF Protection - Webhook URL Validation', () => {
-  const validateWebhookUrl = (urlString: string): { valid: boolean; error?: string } => {
-    try {
-      const url = new URL(urlString);
+/**
+ * Tests to verify ipaddr.js correctly identifies reserved IP ranges
+ * This documents that background.ts can rely on ipaddr.js's built-in range detection
+ * instead of manual IP range checks for SSRF protection
+ */
+describe('ipaddr.js Reserved Range Detection (SSRF Protection Foundation)', () => {
+  describe('TEST-NET ranges (RFC5737) - Documentation examples', () => {
+    it('should identify TEST-NET-1 (192.0.2.0/24) as reserved', () => {
+      const testAddresses = ['192.0.2.1', '192.0.2.100', '192.0.2.255'];
 
-      // Only allow HTTP and HTTPS
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        return { valid: false, error: 'Only HTTP and HTTPS protocols are allowed' };
-      }
-
-      const hostname = url.hostname.toLowerCase();
-
-      // Block localhost
-      if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-        return { valid: false, error: 'Access to localhost is forbidden' };
-      }
-
-      // Block internal domains
-      if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-        return { valid: false, error: 'Access to internal domains is forbidden' };
-      }
-
-      return { valid: true };
-    } catch (error) {
-      return { valid: false, error: 'Invalid URL format' };
-    }
-  };
-
-  describe('Protocol validation', () => {
-    it('should allow HTTPS URLs', () => {
-      const result = validateWebhookUrl('https://example.com/webhook');
-      expect(result.valid).toBe(true);
+      testAddresses.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('reserved');
+      });
     });
 
-    it('should allow HTTP URLs', () => {
-      const result = validateWebhookUrl('http://example.com/webhook');
-      expect(result.valid).toBe(true);
+    it('should identify TEST-NET-2 (198.51.100.0/24) as reserved', () => {
+      const testAddresses = ['198.51.100.1', '198.51.100.50', '198.51.100.255'];
+
+      testAddresses.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('reserved');
+      });
     });
 
-    it('should reject file:// protocol', () => {
-      const result = validateWebhookUrl('file:///etc/passwd');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('HTTP');
-    });
+    it('should identify TEST-NET-3 (203.0.113.0/24) as reserved', () => {
+      const testAddresses = ['203.0.113.1', '203.0.113.100', '203.0.113.255'];
 
-    it('should reject ftp:// protocol', () => {
-      const result = validateWebhookUrl('ftp://example.com/file');
-      expect(result.valid).toBe(false);
-    });
-
-    it('should reject javascript: protocol', () => {
-      const result = validateWebhookUrl('javascript:alert(1)');
-      expect(result.valid).toBe(false);
-    });
-
-    it('should reject data: protocol', () => {
-      const result = validateWebhookUrl('data:text/html,<script>alert(1)</script>');
-      expect(result.valid).toBe(false);
-    });
-  });
-
-  describe('Localhost blocking', () => {
-    it('should reject localhost', () => {
-      const result = validateWebhookUrl('http://localhost:8080/webhook');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('localhost');
-    });
-
-    it('should reject variations of localhost', () => {
-      const urls = [
-        'http://LOCALHOST/webhook',
-        'http://test.localhost/webhook',
-        'http://api.localhost/webhook',
-      ];
-
-      urls.forEach(url => {
-        const result = validateWebhookUrl(url);
-        expect(result.valid).toBe(false);
+      testAddresses.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('reserved');
       });
     });
   });
 
-  describe('Internal domain blocking', () => {
-    it('should reject .local domains', () => {
-      const result = validateWebhookUrl('http://server.local/webhook');
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('internal');
-    });
+  describe('Other reserved ranges', () => {
+    it('should identify IETF Protocol Assignments (192.0.0.0/24, RFC5735) as reserved', () => {
+      const testAddresses = ['192.0.0.1', '192.0.0.100', '192.0.0.255'];
 
-    it('should reject .internal domains', () => {
-      const result = validateWebhookUrl('http://api.internal/webhook');
-      expect(result.valid).toBe(false);
-    });
-
-    it('should reject nested internal domains', () => {
-      const result = validateWebhookUrl('http://api.service.internal/webhook');
-      expect(result.valid).toBe(false);
-    });
-  });
-
-  describe('Valid public URLs', () => {
-    it('should allow standard public domains', () => {
-      const urls = [
-        'https://example.com/webhook',
-        'https://api.example.com/notify',
-        'https://hooks.slack.com/services/XXX',
-        'https://discord.com/api/webhooks/XXX',
-      ];
-
-      urls.forEach(url => {
-        const result = validateWebhookUrl(url);
-        expect(result.valid).toBe(true);
+      testAddresses.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('reserved');
       });
     });
 
-    it('should allow URLs with query parameters', () => {
-      const result = validateWebhookUrl('https://example.com/webhook?token=abc&project=test');
-      expect(result.valid).toBe(true);
-    });
+    it('should identify Benchmarking range (198.18.0.0/15, RFC2544) as reserved', () => {
+      const testAddresses = ['198.18.0.1', '198.18.255.255', '198.19.0.1', '198.19.255.255'];
 
-    it('should allow URLs with ports', () => {
-      const result = validateWebhookUrl('https://example.com:8443/webhook');
-      expect(result.valid).toBe(true);
+      testAddresses.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('reserved');
+      });
     });
   });
 
-  describe('Invalid URL format', () => {
-    it('should reject malformed URLs', () => {
-      const urls = [
-        'not-a-url',
-        'ht!tp://example.com',
-        '//example.com',
-        'example.com',
+  describe('Private and special-use ranges', () => {
+    it('should identify private IP ranges (RFC1918) as private', () => {
+      const privateIPs = [
+        '10.0.0.1',
+        '10.255.255.255',
+        '172.16.0.1',
+        '172.31.255.255',
+        '192.168.0.1',
+        '192.168.255.255'
       ];
 
-      urls.forEach(url => {
-        const result = validateWebhookUrl(url);
-        expect(result.valid).toBe(false);
-        expect(result.error).toContain('Invalid URL');
+      privateIPs.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('private');
+      });
+    });
+
+    it('should identify link-local addresses (169.254.0.0/16) as linkLocal', () => {
+      const linkLocalIPs = ['169.254.1.1', '169.254.169.254']; // AWS metadata service
+
+      linkLocalIPs.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('linkLocal');
+      });
+    });
+
+    it('should identify loopback addresses (127.0.0.0/8) as loopback', () => {
+      const loopbackIPs = ['127.0.0.1', '127.0.0.2', '127.255.255.255'];
+
+      loopbackIPs.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('loopback');
+      });
+    });
+
+    it('should identify carrier-grade NAT (100.64.0.0/10, RFC6598) as carrierGradeNat', () => {
+      const cgnatIPs = ['100.64.0.1', '100.100.0.1', '100.127.255.255'];
+
+      cgnatIPs.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('carrierGradeNat');
+      });
+    });
+  });
+
+  describe('Public unicast addresses', () => {
+    it('should identify public addresses as unicast', () => {
+      const publicIPs = ['8.8.8.8', '1.1.1.1', '208.67.222.222'];
+
+      publicIPs.forEach(ip => {
+        const addr = ipaddr.process(ip);
+        const range = addr.range();
+        expect(range).toBe('unicast');
       });
     });
   });
