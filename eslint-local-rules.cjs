@@ -55,6 +55,7 @@ module.exports = {
       },
       messages: {
         noHardcodedString: 'Hardcoded user-facing string found in {{method}}. Use i18n.t() instead.',
+        noHardcodedNotificationString: 'Hardcoded {{property}} in chrome.notifications.create. Use t() for i18n.',
       },
       schema: [
         {
@@ -72,46 +73,126 @@ module.exports = {
       const options = context.options[0] || {};
       const allowConsole = options.allowConsole !== false;
 
-      // Methods that typically show user-facing messages
-      const userFacingMethods = [
+      // Methods that take string as first argument
+      const stringFirstArgMethods = [
         'alert',
         'confirm',
         'prompt',
-        // Chrome notification API
-        'chrome.notifications.create',
         // Don't check console methods if allowConsole is true
         ...(allowConsole ? [] : ['console.log', 'console.error', 'console.warn', 'console.info']),
       ];
+
+      /**
+       * Check if a string value should be allowed (is likely an i18n key or empty)
+       */
+      function isAllowedString(value) {
+        // Allow empty strings and single characters
+        if (value.length <= 1) {
+          return true;
+        }
+
+        // Allow strings that look like i18n keys (e.g., 'project_name', 'errorCode')
+        if (/^[a-z_][a-z0-9_]*$/i.test(value)) {
+          return true;
+        }
+
+        return false;
+      }
+
+      /**
+       * Check object properties for hardcoded strings
+       */
+      function checkObjectProperties(objNode, userFacingProps, methodName) {
+        if (objNode.type !== 'ObjectExpression') {
+          return;
+        }
+
+        for (const prop of objNode.properties) {
+          if (prop.type !== 'Property') {
+            continue;
+          }
+
+          // Get property name
+          let propName = null;
+          if (prop.key.type === 'Identifier') {
+            propName = prop.key.name;
+          } else if (prop.key.type === 'Literal') {
+            propName = prop.key.value;
+          }
+
+          // Check if this property should contain user-facing text
+          if (userFacingProps.includes(propName)) {
+            const value = prop.value;
+
+            // Check for hardcoded string literal
+            if (value.type === 'Literal' && typeof value.value === 'string') {
+              if (!isAllowedString(value.value)) {
+                context.report({
+                  node: value,
+                  messageId: 'noHardcodedNotificationString',
+                  data: {
+                    property: propName,
+                  },
+                });
+              }
+            }
+            // Check for template literals (backticks)
+            else if (value.type === 'TemplateLiteral' && value.expressions.length === 0) {
+              // Template literal with no expressions is essentially a string
+              const stringValue = value.quasis[0]?.value.raw || '';
+              if (!isAllowedString(stringValue)) {
+                context.report({
+                  node: value,
+                  messageId: 'noHardcodedNotificationString',
+                  data: {
+                    property: propName,
+                  },
+                });
+              }
+            }
+          }
+        }
+      }
 
       return {
         CallExpression(node) {
           const methodName = context.sourceCode.getText(node.callee);
 
-          // Check if this is a user-facing method call (exact match)
-          const isUserFacing = userFacingMethods.includes(methodName);
+          // Handle chrome.notifications.create specially
+          if (methodName === 'chrome.notifications.create' && node.arguments.length > 0) {
+            // First argument can be notificationId (string) or options (object)
+            // Second argument is options if first was ID
+            let optionsArg = node.arguments[0];
+
+            // If first arg is string, options is second arg
+            if (optionsArg.type === 'Literal' || optionsArg.type === 'TemplateLiteral') {
+              optionsArg = node.arguments[1];
+            }
+
+            if (optionsArg) {
+              // Check title and message properties in options object
+              checkObjectProperties(optionsArg, ['title', 'message'], methodName);
+            }
+            return;
+          }
+
+          // Handle other user-facing methods (string as first argument)
+          const isUserFacing = stringFirstArgMethods.includes(methodName);
 
           if (isUserFacing && node.arguments.length > 0) {
             const firstArg = node.arguments[0];
 
             // Check if the first argument is a string literal (hardcoded)
             if (firstArg.type === 'Literal' && typeof firstArg.value === 'string') {
-              // Allow empty strings and single characters
-              if (firstArg.value.length <= 1) {
-                return;
+              if (!isAllowedString(firstArg.value)) {
+                context.report({
+                  node: firstArg,
+                  messageId: 'noHardcodedString',
+                  data: {
+                    method: methodName,
+                  },
+                });
               }
-
-              // Allow strings that look like keys (e.g., 'project_name')
-              if (/^[a-z_]+$/.test(firstArg.value)) {
-                return;
-              }
-
-              context.report({
-                node: firstArg,
-                messageId: 'noHardcodedString',
-                data: {
-                  method: methodName,
-                },
-              });
             }
           }
         },
