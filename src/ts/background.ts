@@ -71,6 +71,7 @@ class MonitorManager {
   private addToTabCache(url: string, tabId: number): void {
     // If cache is full, remove oldest entry (FIFO strategy)
     if (this.tabCache.size >= LIMITS.MAX_TAB_CACHE_SIZE) {
+      // Map iteration order is insertion-order (ES2015 spec), so first key is the oldest entry
       const firstKey = this.tabCache.keys().next().value;
       if (firstKey) {
         console.log(`Tab cache full, removing oldest entry: ${firstKey}`);
