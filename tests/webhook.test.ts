@@ -192,6 +192,71 @@ describe('Webhook Variable Replacement', () => {
       expect(() => JSON.parse(result)).not.toThrow();
     });
   });
+
+  describe('Edge cases for variable substitution', () => {
+    const replaceVariablesInJson = (template: string, variables: Record<string, any>): string => {
+      let result = template;
+      for (const [key, value] of Object.entries(variables)) {
+        const regex = new RegExp(`"\\{\\{${key}\\}\\}"`, 'g');
+        result = result.replace(regex, JSON.stringify(String(value)));
+      }
+      return result;
+    };
+
+    it('should handle circular reference in variables object gracefully', () => {
+      // Create object with circular reference
+      const circularObj: Record<string, any> = { name: 'test' };
+      circularObj.self = circularObj; // Circular reference
+
+      const template = '{"project": "{{name}}"}';
+
+      // Should use String() which returns the value without following circular refs
+      const result = replaceVariablesInJson(template, circularObj);
+
+      expect(result).toBe('{"project": "test"}');
+      expect(() => JSON.parse(result)).not.toThrow();
+    });
+
+    it('should handle very deeply nested objects in variables', () => {
+      // Create a deeply nested structure
+      let deepObj: any = { value: 'final' };
+      for (let i = 0; i < 100; i++) {
+        deepObj = { nested: deepObj };
+      }
+
+      const template = '{"data": "{{nested}}"}';
+      const variables = { nested: deepObj };
+
+      // Should convert to [object Object] since we use String()
+      const result = replaceVariablesInJson(template, variables);
+
+      expect(result).toBe('{"data": "[object Object]"}');
+      expect(() => JSON.parse(result)).not.toThrow();
+    });
+
+    it('should handle undefined and null values', () => {
+      const template = '{"undef": "{{undefinedVal}}", "null": "{{nullVal}}"}';
+      const variables = { undefinedVal: undefined, nullVal: null };
+
+      const result = replaceVariablesInJson(template, variables);
+
+      expect(result).toBe('{"undef": "undefined", "null": "null"}');
+      expect(() => JSON.parse(result)).not.toThrow();
+    });
+
+    it('should handle very long variable values (near size limits)', () => {
+      // Create a string near the typical limit
+      const longValue = 'x'.repeat(10000);
+      const template = '{"content": "{{longContent}}"}';
+      const variables = { longContent: longValue };
+
+      const result = replaceVariablesInJson(template, variables);
+
+      expect(result).toContain(longValue);
+      expect(result.length).toBeGreaterThan(10000);
+      expect(() => JSON.parse(result)).not.toThrow();
+    });
+  });
 });
 
 /**

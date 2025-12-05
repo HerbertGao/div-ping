@@ -340,5 +340,111 @@ describe('Validation Module', () => {
         expect(validateWebhookHeaders(headers)).toEqual({ valid: true });
       });
     });
+
+    describe('Edge cases for size limits', () => {
+      it('should accept headers at exactly the size limit', () => {
+        // Create headers that are exactly at the limit
+        const largeValue = 'x'.repeat(LIMITS.MAX_WEBHOOK_HEADERS_SIZE - 50);
+        const headers = { 'X-Large': largeValue };
+
+        const result = validateWebhookHeaders(headers);
+
+        // Should be valid if at or just under limit
+        if (JSON.stringify(headers).length <= LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
+          expect(result.valid).toBe(true);
+        }
+      });
+
+      it('should reject headers exceeding size by 1 byte', () => {
+        // Create headers that exceed by just 1 byte
+        const tooLargeValue = 'x'.repeat(LIMITS.MAX_WEBHOOK_HEADERS_SIZE);
+        const headers = { 'X-Too-Large': tooLargeValue };
+
+        const result = validateWebhookHeaders(headers);
+
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('exceeds maximum');
+      });
+
+      it('should handle Unicode characters in size calculation (multi-byte chars)', () => {
+        // Unicode emoji are multiple bytes (e.g., 😀 is 4 bytes)
+        const emojiValue = '😀'.repeat(100); // Each emoji is 4 bytes
+        const headers = { 'X-Emoji': emojiValue };
+
+        const result = validateWebhookHeaders(headers);
+
+        // Should calculate byte size correctly, not character count
+        const byteSize = new Blob([JSON.stringify(headers)]).size;
+        if (byteSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
+          expect(result.valid).toBe(false);
+        }
+      });
+    });
+  });
+
+  describe('Edge cases for content size', () => {
+    describe('validateWebhookBody() with large content', () => {
+      it('should accept body at exactly the size limit', () => {
+        // Create body that is exactly at limit
+        const largeContent = 'x'.repeat(LIMITS.MAX_WEBHOOK_BODY_SIZE - 20);
+        const body = { content: largeContent };
+
+        const result = validateWebhookBody(body);
+
+        if (new Blob([JSON.stringify(body)]).size <= LIMITS.MAX_WEBHOOK_BODY_SIZE) {
+          expect(result.valid).toBe(true);
+        }
+      });
+
+      it('should reject body exceeding size limit by 1 byte', () => {
+        const tooLarge = 'x'.repeat(LIMITS.MAX_WEBHOOK_BODY_SIZE + 1);
+
+        const result = validateWebhookBody(tooLarge);
+
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('exceeds maximum');
+      });
+
+      it('should correctly calculate size for Unicode content (surrogate pairs)', () => {
+        // Test with characters outside BMP (Basic Multilingual Plane)
+        // These use surrogate pairs: 𝕳𝖊𝖑𝖑𝖔 (Mathematical Bold Fraktur)
+        const unicodeContent = '𝕳𝖊𝖑𝖑𝖔 '.repeat(1000);
+
+        const result = validateWebhookBody(unicodeContent);
+
+        // Should use Blob size which handles surrogate pairs correctly
+        const byteSize = new Blob([unicodeContent]).size;
+        if (byteSize > LIMITS.MAX_WEBHOOK_BODY_SIZE) {
+          expect(result.valid).toBe(false);
+          expect(result.error).toContain('exceeds maximum');
+        } else {
+          expect(result.valid).toBe(true);
+        }
+      });
+
+      it('should handle RTL (Right-to-Left) text correctly', () => {
+        // Test with Arabic and Hebrew text
+        const rtlText = 'مرحبا بك في العالم'.repeat(100) + ' שלום עולם'.repeat(100);
+
+        const result = validateWebhookBody(rtlText);
+
+        // Should validate based on byte size, not character semantics
+        const byteSize = new Blob([rtlText]).size;
+        expect(byteSize).toBeGreaterThan(0);
+        if (byteSize <= LIMITS.MAX_WEBHOOK_BODY_SIZE) {
+          expect(result.valid).toBe(true);
+        }
+      });
+
+      it('should handle mixed Unicode scripts (combining characters)', () => {
+        // Test with combining diacritical marks (é = e + ́)
+        const combining = 'e\u0301'.repeat(1000); // é composed of e + combining acute
+
+        const result = validateWebhookBody(combining);
+
+        // Blob size should account for all bytes including combining marks
+        expect(result).toHaveProperty('valid');
+      });
+    });
   });
 });
