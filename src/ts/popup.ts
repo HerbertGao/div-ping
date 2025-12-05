@@ -1,6 +1,6 @@
-import { Project, LogEntry, MessageResponse } from './types';
+import { initI18nForHTML, t } from './i18n';
 import { storageManager } from './storageManager';
-import { t, initI18nForHTML } from './i18n';
+import { LogEntry, MessageResponse, Project } from './types';
 
 // Monitor project management
 class ProjectManager {

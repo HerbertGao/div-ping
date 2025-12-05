@@ -1,8 +1,8 @@
-import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse, Settings } from './types';
-import { storageManager } from './storageManager';
-import { TIMEOUTS, LIMITS, NOTIFICATION, ALARM } from './constants';
+import { ALARM, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } from './constants';
 import { t } from './i18n';
-import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
+import { storageManager } from './storageManager';
+import { LogEntry, MessageRequest, MessageResponse, Project, Settings, WebhookConfig } from './types';
+import { validateInterval, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
 
 // Monitor info interface (no longer needs intervalId)
 interface MonitorInfo {
@@ -671,13 +671,29 @@ class MonitorManager {
       );
     }
 
-    // Webhook notification
+    // Webhook notification with rate limiting
     const webhook = project.webhook;
 
     if (webhook?.enabled && webhook.url) {
+      // Check rate limiting
+      const now = Date.now();
+      const lastWebhookTime = project.lastWebhookTime ? new Date(project.lastWebhookTime).getTime() : 0;
+      const timeSinceLastWebhook = now - lastWebhookTime;
+
+      if (timeSinceLastWebhook < WEBHOOK_RATE_LIMIT.MIN_INTERVAL_MS) {
+        const waitTime = Math.ceil((WEBHOOK_RATE_LIMIT.MIN_INTERVAL_MS - timeSinceLastWebhook) / 1000);
+        console.warn(`[${project.name}] Webhook rate limited. Need to wait ${waitTime} more seconds before next call.`);
+        return;
+      }
+
       try {
         await this.sendWebhook(webhook, project, oldContent, newContent);
         console.log('Webhook notification sent successfully');
+
+        // Update lastWebhookTime after successful webhook call
+        await storageManager.updateProject(project.id, {
+          lastWebhookTime: new Date().toISOString()
+        });
       } catch (error) {
         console.error('Failed to send webhook notification:', error);
       }

@@ -1,6 +1,6 @@
-import { Project, WebhookConfig, MessageRequest, MessageResponse } from './types';
 import { DEFAULTS, LIMITS } from './constants';
 import { t } from './i18n';
+import { MessageRequest, MessageResponse, Project, WebhookConfig } from './types';
 
 // Element selection mode
 class ElementSelector {

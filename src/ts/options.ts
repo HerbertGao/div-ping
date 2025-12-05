@@ -1,6 +1,6 @@
-import { Settings, ExportData } from './types';
+import { initI18nForHTML, t } from './i18n';
 import { storageManager } from './storageManager';
-import { t, initI18nForHTML } from './i18n';
+import { ExportData, Settings } from './types';
 
 // Options page logic
 class OptionsManager {

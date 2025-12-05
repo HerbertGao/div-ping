@@ -69,13 +69,7 @@ npm test                 # Run tests
 npm run test:coverage    # Generate coverage report
 ```
 
-All 167 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, i18n, race conditions, tab cache, and edge cases.
-
-## Development TODO
-
-### Medium Priority
-
-- [ ] Webhook rate limiting - prevent frequent triggering
+All 182 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, i18n, race conditions, tab cache, webhook rate limiting, and edge cases.
 
 ## License
 

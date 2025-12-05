@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 // Mock Chrome i18n API
 const mockGetMessage = jest.fn<(key: string, substitutions?: string | string[]) => string>();
@@ -14,7 +14,7 @@ globalThis.chrome = {
 } as any;
 
 // Import after mocking
-import { t, getCurrentLanguage, getAcceptLanguages } from '../src/ts/i18n';
+import { getAcceptLanguages, getCurrentLanguage, t } from '../src/ts/i18n';
 
 describe('i18n utility functions', () => {
   beforeEach(() => {

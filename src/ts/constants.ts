@@ -65,3 +65,11 @@ export const ALARM = {
   /** Initial alarm delay in minutes (0 = trigger immediately) */
   INITIAL_DELAY_MINUTES: 0,
 } as const;
+
+/**
+ * Webhook rate limiting configuration
+ */
+export const WEBHOOK_RATE_LIMIT = {
+  /** Minimum interval between webhook calls in milliseconds (default: 60 seconds) */
+  MIN_INTERVAL_MS: 60000,
+} as const;

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import type { Project, LogEntry } from '../src/ts/types';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import type { LogEntry, Project } from '../src/ts/types';
 
 /**
  * Mock Chrome Storage API

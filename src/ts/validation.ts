@@ -6,8 +6,8 @@
  * For user-facing display, these should be translated in the UI layer.
  */
 
-import { LIMITS } from './constants';
 import ipaddr from 'ipaddr.js';
+import { LIMITS } from './constants';
 
 export interface ValidationResult {
   valid: boolean;

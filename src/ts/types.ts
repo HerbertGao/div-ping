@@ -17,6 +17,7 @@
  * @property {string} [lastContent] - Last observed content of the monitored element
  * @property {string} [lastChecked] - ISO timestamp of last check
  * @property {number | null} [tabId] - Chrome tab ID used for monitoring (cached for reuse)
+ * @property {string} [lastWebhookTime] - ISO timestamp of last webhook call (for rate limiting)
  */
 export interface Project {
   id: string;
@@ -30,6 +31,7 @@ export interface Project {
   lastContent?: string;
   lastChecked?: string;
   tabId?: number | null;
+  lastWebhookTime?: string;
 }
 
 /**

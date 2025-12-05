@@ -1,13 +1,13 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
+import { LIMITS } from '../src/ts/constants';
 import {
-  validateProjectName,
-  validateUrl,
-  validateSelector,
   validateInterval,
+  validateProjectName,
+  validateSelector,
+  validateUrl,
   validateWebhookBody,
   validateWebhookHeaders,
 } from '../src/ts/validation';
-import { LIMITS } from '../src/ts/constants';
 
 describe('Validation Module', () => {
   describe('validateProjectName()', () => {
