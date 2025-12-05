@@ -430,8 +430,8 @@ class MonitorManager {
   }
 
   /**
-   * 获取或创建用于检测的标签页
-   * 优先重用已存在的标签页，减少资源消耗
+   * Get or create a tab for content detection
+   * Prioritizes reusing existing tabs to reduce resource consumption
    */
   private async getOrCreateTab(url: string): Promise<TabResult> {
     // 1. Check if there is a cached tab for this URL
