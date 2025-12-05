@@ -37,6 +37,7 @@ export interface Project {
 /**
  * Recursive type for webhook body values
  * Supports nested objects and arrays of basic types
+ * Note: Using index signature instead of Record<> to avoid circular reference issues
  */
 type WebhookBodyValue = string | number | boolean | null | WebhookBodyValue[] | { [key: string]: WebhookBodyValue };
 
