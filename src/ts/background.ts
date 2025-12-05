@@ -1,6 +1,6 @@
 import { Project, WebhookConfig, LogEntry, MessageRequest, MessageResponse, Settings } from './types';
 import { storageManager } from './storageManager';
-import { TIMEOUTS, LIMITS } from './constants';
+import { TIMEOUTS, LIMITS, NOTIFICATION, ALARM } from './constants';
 import { t } from './i18n';
 import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
 
@@ -301,7 +301,7 @@ class MonitorManager {
               iconUrl: chrome.runtime.getURL('icons/icon128.png'),
               title: t('testNotificationTitle'),
               message: t('testNotificationMessage'),
-              priority: 2
+              priority: NOTIFICATION.PRIORITY
             },
             (notificationId) => {
               if (chrome.runtime.lastError) {
@@ -354,7 +354,7 @@ class MonitorManager {
     const periodInMinutes = Math.max(1, project.interval / 60000);
 
     chrome.alarms.create(alarmName, {
-      delayInMinutes: 0, // Trigger immediately first time
+      delayInMinutes: ALARM.INITIAL_DELAY_MINUTES, // Trigger immediately first time
       periodInMinutes: periodInMinutes
     });
 
@@ -578,7 +578,7 @@ class MonitorManager {
           iconUrl: chrome.runtime.getURL('icons/icon128.png'),
           title: t('changeNotificationTitleShort'),
           message: message,
-          priority: 2
+          priority: NOTIFICATION.PRIORITY
         },
         (notificationId) => {
           if (chrome.runtime.lastError) {

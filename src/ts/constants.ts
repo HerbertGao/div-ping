@@ -52,3 +52,16 @@ export const DEFAULTS = {
   /** Default monitoring interval in milliseconds */
   INTERVAL_MS: 60000,
 } as const;
+
+/**
+ * Notification and alarm configurations
+ */
+export const NOTIFICATION = {
+  /** Chrome notification priority (0=lowest, 2=highest) */
+  PRIORITY: 2,
+} as const;
+
+export const ALARM = {
+  /** Initial alarm delay in minutes (0 = trigger immediately) */
+  INITIAL_DELAY_MINUTES: 0,
+} as const;
