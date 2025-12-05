@@ -15,7 +15,29 @@ export interface ValidationResult {
 }
 
 /**
- * Validate project name
+ * Validates a project name for length and character constraints
+ *
+ * @param name - The project name to validate
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Cannot be empty or whitespace-only
+ * - Maximum length: 100 characters (see LIMITS.MAX_PROJECT_NAME_LENGTH)
+ * - Cannot contain control characters (U+0000 to U+001F, U+007F)
+ *
+ * @example
+ * ```typescript
+ * const result = validateProjectName('My Website Monitor');
+ * if (!result.valid) {
+ *   console.error(result.error);
+ * }
+ *
+ * // Invalid examples:
+ * validateProjectName('');           // { valid: false, error: 'Project name cannot be empty' }
+ * validateProjectName('   ');        // { valid: false, error: 'Project name cannot be empty' }
+ * validateProjectName('Test\x00');   // { valid: false, error: 'Project name contains invalid control characters' }
+ * ```
  */
 export function validateProjectName(name: string): ValidationResult {
   if (!name || name.trim().length === 0) {
@@ -39,7 +61,31 @@ export function validateProjectName(name: string): ValidationResult {
 }
 
 /**
- * Validate CSS selector
+ * Validates a CSS selector for syntax and length constraints
+ *
+ * @param selector - The CSS selector string to validate
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Cannot be empty or whitespace-only
+ * - Maximum length: 1000 characters (see LIMITS.MAX_SELECTOR_LENGTH)
+ * - Must be valid CSS selector syntax (tested with document.querySelector when available)
+ *
+ * Note: Syntax validation is skipped in service worker context where document is unavailable
+ *
+ * @example
+ * ```typescript
+ * // Valid selectors:
+ * validateSelector('#content');                    // { valid: true }
+ * validateSelector('.article > p:first-child');    // { valid: true }
+ * validateSelector('[data-testid="main"]');        // { valid: true }
+ *
+ * // Invalid selectors:
+ * validateSelector('');                            // { valid: false, error: 'CSS selector cannot be empty' }
+ * validateSelector('#invalid#syntax');             // { valid: false, error: 'Invalid CSS selector syntax...' }
+ * validateSelector('a'.repeat(1001));              // { valid: false, error: 'CSS selector cannot exceed 1000 characters' }
+ * ```
  */
 export function validateSelector(selector: string): ValidationResult {
   if (!selector || selector.trim().length === 0) {
@@ -70,7 +116,30 @@ export function validateSelector(selector: string): ValidationResult {
 }
 
 /**
- * Validate URL
+ * Validates a webpage URL for monitoring
+ *
+ * @param url - The URL string to validate
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Cannot be empty or whitespace-only
+ * - Maximum length: 2048 characters (see LIMITS.MAX_URL_LENGTH)
+ * - Must be a valid URL format (parseable by URL constructor)
+ * - Protocol must be http: or https: only
+ *
+ * @example
+ * ```typescript
+ * // Valid URLs:
+ * validateUrl('https://example.com');              // { valid: true }
+ * validateUrl('http://localhost:3000/page');       // { valid: true }
+ *
+ * // Invalid URLs:
+ * validateUrl('');                                 // { valid: false, error: 'URL cannot be empty' }
+ * validateUrl('ftp://example.com');                // { valid: false, error: 'Only HTTP and HTTPS protocols are allowed' }
+ * validateUrl('not a url');                        // { valid: false, error: 'Invalid URL format' }
+ * validateUrl('https://example.com/' + 'a'.repeat(3000)); // { valid: false, error: 'URL cannot exceed 2048 characters' }
+ * ```
  */
 export function validateUrl(url: string): ValidationResult {
   if (!url || url.trim().length === 0) {
@@ -106,8 +175,34 @@ export function validateUrl(url: string): ValidationResult {
 }
 
 /**
- * Validate webhook headers
- * Validates header names and values according to RFC 7230
+ * Validates webhook HTTP headers for format, size, and security constraints
+ *
+ * @param headers - Headers as JSON string or object with string values
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Must be a valid object (not array or null)
+ * - Header names must follow RFC 7230 token format (alphanumeric and specific symbols)
+ * - Header values cannot contain control characters (prevents header injection attacks)
+ * - Total serialized size cannot exceed 10KB (see LIMITS.MAX_WEBHOOK_HEADERS_SIZE)
+ *
+ * Security features:
+ * - Prevents CRLF injection by blocking \r and \n characters
+ * - Blocks all control characters (U+0000 to U+001F, U+007F)
+ *
+ * @example
+ * ```typescript
+ * // Valid headers:
+ * validateWebhookHeaders({ 'Content-Type': 'application/json' });          // { valid: true }
+ * validateWebhookHeaders('{"Authorization": "Bearer token123"}');          // { valid: true }
+ *
+ * // Invalid headers:
+ * validateWebhookHeaders({ 'Invalid Header': 'value' });                   // { valid: false, error: 'Invalid header name...' }
+ * validateWebhookHeaders({ 'X-Test': 'value\r\nInjected: header' });       // { valid: false, error: 'contains control characters' }
+ * validateWebhookHeaders('not valid json');                                // { valid: false, error: 'Invalid headers format...' }
+ * validateWebhookHeaders([]);                                              // { valid: false, error: 'Headers must be an object' }
+ * ```
  */
 export function validateWebhookHeaders(headers: string | Record<string, string>): ValidationResult {
   try {
@@ -147,7 +242,31 @@ export function validateWebhookHeaders(headers: string | Record<string, string>)
 }
 
 /**
- * Validate webhook body size
+ * Validates webhook request body for size constraints
+ *
+ * @param body - Request body as string or object (will be JSON serialized)
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Total serialized size cannot exceed 512KB (see LIMITS.MAX_WEBHOOK_BODY_SIZE)
+ * - Size is calculated in bytes using UTF-8 encoding (via Blob API)
+ * - Objects are automatically JSON-stringified for size calculation
+ *
+ * Note: This function only validates size, not structure or content validity
+ *
+ * @example
+ * ```typescript
+ * // Valid bodies:
+ * validateWebhookBody('{"message": "test"}');                  // { valid: true }
+ * validateWebhookBody({ project: 'monitor', status: 'ok' });   // { valid: true }
+ * validateWebhookBody('Small text content');                   // { valid: true }
+ *
+ * // Invalid body:
+ * const largeBody = 'x'.repeat(600 * 1024); // 600KB
+ * validateWebhookBody(largeBody);
+ * // { valid: false, error: 'Webhook body size (614400 bytes) exceeds maximum 524288 bytes' }
+ * ```
  */
 export function validateWebhookBody(body: string | Record<string, unknown>): ValidationResult {
   const bodyString = typeof body === 'string' ? body : JSON.stringify(body);
@@ -164,7 +283,33 @@ export function validateWebhookBody(body: string | Record<string, unknown>): Val
 }
 
 /**
- * Validate monitoring interval
+ * Validates monitoring check interval for reasonable time bounds
+ *
+ * @param interval - Monitoring interval in milliseconds
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Must be a valid number (not NaN)
+ * - Minimum: 60000ms (60 seconds) - see LIMITS.MIN_INTERVAL_MS
+ * - Maximum: 86400000ms (24 hours) - see LIMITS.MAX_INTERVAL_MS
+ *
+ * Rationale for limits:
+ * - Minimum prevents excessive server load from too-frequent checks
+ * - Maximum ensures monitoring remains reasonably responsive
+ *
+ * @example
+ * ```typescript
+ * // Valid intervals:
+ * validateInterval(60000);        // 1 minute - { valid: true }
+ * validateInterval(300000);       // 5 minutes - { valid: true }
+ * validateInterval(3600000);      // 1 hour - { valid: true }
+ *
+ * // Invalid intervals:
+ * validateInterval(30000);        // Too short - { valid: false, error: 'Interval cannot be less than 60 seconds' }
+ * validateInterval(90000000);     // Too long - { valid: false, error: 'Interval cannot exceed 24 hours' }
+ * validateInterval(NaN);          // Not a number - { valid: false, error: 'Interval must be a valid number' }
+ * ```
  */
 export function validateInterval(interval: number): ValidationResult {
   if (typeof interval !== 'number' || isNaN(interval)) {
@@ -189,8 +334,47 @@ export function validateInterval(interval: number): ValidationResult {
 }
 
 /**
- * Validate webhook URL for SSRF (Server-Side Request Forgery) prevention
- * Checks for malicious URLs that could access internal resources
+ * Validates webhook URL with comprehensive SSRF (Server-Side Request Forgery) protection
+ *
+ * @param urlString - The webhook URL to validate
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Must be valid URL format
+ * - Protocol must be http: or https: only (blocks file:, javascript:, data:, etc.)
+ * - Blocks localhost and .localhost domains
+ * - Blocks .local and .internal TLDs
+ * - Blocks private/reserved IP ranges (both IPv4 and IPv6)
+ * - Blocks IPv4-mapped IPv6 addresses to private ranges
+ *
+ * Blocked IP ranges (via ipaddr.js):
+ * - Loopback: 127.0.0.0/8, ::1
+ * - Private: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7
+ * - Link-local: 169.254.0.0/16, fe80::/10
+ * - Reserved: TEST-NET ranges, benchmarking, future use
+ * - Carrier-grade NAT: 100.64.0.0/10
+ * - Multicast, broadcast, unspecified
+ *
+ * @example
+ * ```typescript
+ * // Valid URLs:
+ * validateWebhookUrl('https://api.example.com/webhook');       // { valid: true }
+ * validateWebhookUrl('http://webhook.service.com:8080/hook');  // { valid: true }
+ *
+ * // Invalid URLs - Protocol restrictions:
+ * validateWebhookUrl('ftp://example.com');                     // { valid: false, error: 'Only HTTP and HTTPS protocols are allowed' }
+ * validateWebhookUrl('file:///etc/passwd');                    // { valid: false, error: 'Only HTTP and HTTPS protocols are allowed' }
+ *
+ * // Invalid URLs - Localhost/internal:
+ * validateWebhookUrl('http://localhost:3000/hook');            // { valid: false, error: 'Localhost addresses are blocked for security' }
+ * validateWebhookUrl('https://api.local/webhook');             // { valid: false, error: 'Internal domain addresses are blocked for security' }
+ *
+ * // Invalid URLs - Private IPs:
+ * validateWebhookUrl('http://192.168.1.1/admin');              // { valid: false, error: "IP range 'private' is blocked for security" }
+ * validateWebhookUrl('http://127.0.0.1/internal');             // { valid: false, error: "IP range 'loopback' is blocked for security" }
+ * validateWebhookUrl('http://[::1]/api');                      // { valid: false, error: "IP range 'loopback' is blocked for security" }
+ * ```
  */
 export function validateWebhookUrl(urlString: string): ValidationResult {
   try {
