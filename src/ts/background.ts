@@ -383,6 +383,71 @@ class MonitorManager {
   }
 
   /**
+   * Request host permission for a specific URL
+   * @param url - The URL to request permission for
+   * @returns Promise<boolean> - Whether permission was granted
+   */
+  private async requestHostPermission(url: string): Promise<boolean> {
+    try {
+      // Extract origin from URL
+      const urlObj = new URL(url);
+      const origin = `${urlObj.protocol}//${urlObj.host}/*`;
+
+      // Check if we already have permission
+      const hasPermission = await chrome.permissions.contains({
+        origins: [origin]
+      });
+
+      if (hasPermission) {
+        console.log(`Already have permission for: ${origin}`);
+        return true;
+      }
+
+      // Request permission
+      console.log(`Requesting permission for: ${origin}`);
+      const granted = await chrome.permissions.request({
+        origins: [origin]
+      });
+
+      if (granted) {
+        console.log(`Permission granted for: ${origin}`);
+      } else {
+        console.warn(`Permission denied for: ${origin}`);
+      }
+
+      return granted;
+    } catch (error) {
+      console.error('Error requesting host permission:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Inject content script into a tab
+   * @param tabId - The tab ID to inject the script into
+   */
+  private async injectContentScript(tabId: number): Promise<void> {
+    try {
+      // Inject CSS first
+      await chrome.scripting.insertCSS({
+        target: { tabId },
+        files: ['css/content.css']
+      });
+
+      // Then inject JavaScript
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['js/content.js']
+      });
+
+      console.log(`Content script injected into tab ${tabId}`);
+    } catch (error) {
+      // Script might already be injected, which is fine
+      console.log(`Content script injection for tab ${tabId}:`, error);
+    }
+  }
+
+  /**
    * Get or create a tab for content detection
    * Prioritizes reusing existing tabs to reduce resource consumption
    */
@@ -442,6 +507,12 @@ class MonitorManager {
     try {
       console.log(`[${project.name}] Getting or creating tab for URL: ${project.url}`);
 
+      // Request host permission for the URL
+      const hasPermission = await this.requestHostPermission(project.url);
+      if (!hasPermission) {
+        throw new Error('Host permission not granted for: ' + project.url);
+      }
+
       // Get or create tab, return result contains tab and isNewlyCreated flag
       const tabResult = await this.getOrCreateTab(project.url);
       tab = tabResult.tab;
@@ -454,6 +525,9 @@ class MonitorManager {
 
       // Wait for page to load
       await this.waitForTabLoad(tab.id);
+
+      // Inject content script into the tab
+      await this.injectContentScript(tab.id);
 
       // Send check request to content script
       const response = await chrome.tabs.sendMessage(tab.id, {

@@ -12,7 +12,7 @@
     "tabs",
     "alarms"
   ],
-  "host_permissions": [
+  "optional_host_permissions": [
     "<all_urls>"
   ],
   "background": {
@@ -31,14 +31,6 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["js/content.js"],
-      "css": ["css/content.css"],
-      "run_at": "document_idle"
-    }
-  ],
   "options_page": "options.html",
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

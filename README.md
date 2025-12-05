@@ -75,8 +75,6 @@ All 167 tests passing with comprehensive coverage for SSRF validation, variable 
 
 ### Medium Priority
 
-- [ ] Dynamic permission requests - current `<all_urls>` permission is too broad
-- [ ] Programmatic content script injection - avoid loading scripts on all pages
 - [ ] Webhook rate limiting - prevent frequent triggering
 
 ## License
