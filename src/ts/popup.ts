@@ -2,7 +2,7 @@ import { Project, LogEntry, MessageResponse } from './types';
 import { storageManager } from './storageManager';
 import { t, initI18nForHTML } from './i18n';
 
-// 监控项目管理
+// Monitor project management
 class ProjectManager {
   private projects: Project[] = [];
 
@@ -28,7 +28,7 @@ class ProjectManager {
     await storageManager.removeProject(id);
     await this.loadProjects(); // Reload after deletion
     this.render();
-    // 通知后台停止监控
+    // Notify background to stop monitoring
     chrome.runtime.sendMessage({ action: 'stopMonitor', projectId: id });
   }
 
@@ -39,7 +39,7 @@ class ProjectManager {
       await this.saveProjects();
       this.render();
 
-      // 通知后台更新监控状态
+      // Notify background to update monitoring status
       if (project.active) {
         chrome.runtime.sendMessage({ action: 'startMonitor', project });
       } else {
@@ -149,19 +149,19 @@ class ProjectManager {
     const project = this.projects.find(p => p.id === projectId);
     if (!project) return;
 
-    // 获取项目对应的标签页
+    // Get tab corresponding to project
     const tabs = await chrome.tabs.query({ url: project.url });
     let targetTab: chrome.tabs.Tab | undefined = tabs.length > 0 ? tabs[0] : undefined;
 
-    // 如果没有找到对应的标签页，尝试打开一个新的
+    // If no corresponding tab found, try to open a new one
     if (!targetTab) {
       targetTab = await chrome.tabs.create({ url: project.url, active: true });
-      // 等待页面加载，设置超时避免永久等待
+      // Wait for page to load, set timeout to avoid permanent wait
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           chrome.tabs.onUpdated.removeListener(listener);
           reject(new Error('Tab load timeout'));
-        }, 30000); // 30秒超时
+        }, 30000); // 30 second timeout
 
         const listener = (tabId: number, info: { status?: string }) => {
           if (tabId === targetTab!.id && info.status === 'complete') {
@@ -173,14 +173,14 @@ class ProjectManager {
         chrome.tabs.onUpdated.addListener(listener);
       }).catch((error) => {
         console.warn('Tab load timeout:', error);
-        // 即使超时也继续执行，可能页面已经部分加载
+        // Continue even if timeout, page may be partially loaded
       });
     } else {
-      // 切换到该标签页
+      // Switch to that tab
       await chrome.tabs.update(targetTab.id!, { active: true });
     }
 
-    // 发送消息到content script显示编辑对话框
+    // Send message to content script to show edit dialog
     chrome.tabs.sendMessage(targetTab.id!, {
       action: 'editProject',
       project: project
@@ -190,7 +190,7 @@ class ProjectManager {
       }
     });
 
-    // 关闭popup
+    // Close popup
     window.close();
   }
 
@@ -235,10 +235,10 @@ class ProjectManager {
 
     const logsContent = dialog.querySelector<HTMLElement>('#logsContent')!;
 
-    // 追踪已显示的日志数量
+    // Track number of logs displayed
     let displayedLogsCount = logs.length;
 
-    // 使用事件委托处理展开/折叠 - 避免重复绑定
+    // Use event delegation for expand/collapse - avoid duplicate bindings
     logsContent.addEventListener('click', (e: Event) => {
       const toggle = (e.target as HTMLElement).closest('.log-toggle') as HTMLElement;
       if (toggle) {
@@ -260,9 +260,9 @@ class ProjectManager {
       }
     });
 
-    // 定时刷新日志数据 - 增量更新
+    // Periodically refresh log data - incremental updates
     const refreshLogs = async (): Promise<void> => {
-      // 安全检查：如果dialog已被移除，停止刷新
+      // Safety check: if dialog has been removed, stop refreshing
       if (!document.body.contains(dialog)) {
         clearInterval(refreshInterval);
         observer.disconnect();
@@ -277,26 +277,26 @@ class ProjectManager {
       if (response?.success) {
         const newLogs: LogEntry[] = response.logs || [];
 
-        // 检查是否有新日志
+        // Check if there are new logs
         if (newLogs.length > displayedLogsCount) {
-          // 有新日志，只渲染新增的部分
+          // New logs exist, only render new parts
           const newLogsToAdd = newLogs.slice(0, newLogs.length - displayedLogsCount);
 
-          // 保存当前滚动位置
+          // Save current scroll position
           const scrollTop = logsContent.scrollTop;
           const isAtBottom = scrollTop + logsContent.clientHeight >= logsContent.scrollHeight - 10;
 
-          // 移除"暂无日志"提示（如果存在）
+          // Remove "no logs" message (if exists)
           const emptyMsg = logsContent.querySelector('div[style*="text-align: center"]');
           if (emptyMsg) {
             emptyMsg.remove();
           }
 
-          // 创建临时容器解析新日志HTML
+          // Create temporary container to parse new log HTML
           const tempContainer = document.createElement('div');
           tempContainer.innerHTML = this.renderLogs(newLogsToAdd);
 
-          // 将新日志插入到最前面
+          // Insert new logs at the top
           const firstChild = logsContent.firstChild;
           while (tempContainer.firstChild) {
             if (firstChild) {
@@ -306,30 +306,30 @@ class ProjectManager {
             }
           }
 
-          // 更新已显示日志数量
+          // Update number of logs displayed
           displayedLogsCount = newLogs.length;
 
-          // 如果之前在底部，滚动到底部
+          // If was at bottom, scroll to bottom
           if (isAtBottom) {
             logsContent.scrollTop = logsContent.scrollHeight;
           }
-          // 否则保持原位置，不需要额外操作
+          // Otherwise keep position, no additional action needed
         } else if (newLogs.length < displayedLogsCount) {
-          // 日志被清空或减少，需要完全重新渲染
+          // Logs cleared or reduced, need complete re-render
           logsContent.innerHTML = newLogs.length === 0
             ? `<div style="text-align: center; color: #999; padding: 40px;">${t('noLogs')}</div>`
             : this.renderLogs(newLogs);
 
           displayedLogsCount = newLogs.length;
         }
-        // 如果数量相同，不做任何操作，保持现有状态
+        // If count is same, do nothing, keep existing state
       }
     };
 
-    // 每3秒刷新一次日志
+    // Refresh logs every 3 seconds
     const refreshInterval = setInterval(refreshLogs, 3000);
 
-    // 使用MutationObserver检测dialog被移除
+    // Use MutationObserver to detect dialog removal
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const removedNodesArray = Array.from(mutation.removedNodes);
@@ -345,7 +345,7 @@ class ProjectManager {
     });
     observer.observe(document.body, { childList: true });
 
-    // 清理函数 - 确保清理所有资源
+    // Cleanup function - ensure all resources are cleaned up
     const cleanup = (): void => {
       clearInterval(refreshInterval);
       observer.disconnect();
@@ -353,13 +353,13 @@ class ProjectManager {
       dialog.remove();
     };
 
-    // Beforeunload处理器（需要命名以便移除）
+    // Beforeunload handler (needs name for removal)
     const cleanupHandler = (): void => {
       clearInterval(refreshInterval);
       observer.disconnect();
     };
 
-    // 页面卸载时清理
+    // Cleanup on page unload
     window.addEventListener('beforeunload', cleanupHandler);
 
     dialog.querySelector<HTMLButtonElement>('#closeLogsBtn')!.addEventListener('click', cleanup);
@@ -371,7 +371,7 @@ class ProjectManager {
       }
     });
 
-    // 点击背景关闭时也清理
+    // Also cleanup when clicking background to close
     dialog.querySelector<HTMLElement>('div')!.addEventListener('click', (e: Event) => {
       if (e.target === e.currentTarget) {
         cleanup();
@@ -395,7 +395,7 @@ class ProjectManager {
 
       const contentPreview = (content?: string | null): string => this.escapeHtml((content || '').substring(0, 500)) + (content && content.length > 500 ? '...' : '');
 
-      // 有变化的日志：默认展开
+      // Changed logs: expand by default
       if (isChanged && log.oldContent) {
         return `<div style="border: 1px solid #4CAF50; border-radius: 4px; padding: 12px; margin-bottom: 12px; background: #f1f8f4;">
           <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
@@ -412,7 +412,7 @@ class ProjectManager {
         </div>`;
       }
 
-      // 无变化的日志：默认折叠，不显示预览
+      // Unchanged logs: collapse by default, no preview
       return `<div style="border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 12px; background: #fafafa;">
         <div class="log-toggle" data-target="${logId}" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
           <div style="font-size: 12px; color: #666; flex: 1; min-width: 0;">
@@ -429,13 +429,13 @@ class ProjectManager {
   }
 }
 
-// 初始化 i18n
+// Initialize i18n
 initI18nForHTML();
 
-// 初始化
+// Initialize
 const projectManager = new ProjectManager();
 
-// 选择元素按钮
+// Select element button
 const selectElementBtn = document.getElementById('selectElement');
 if (selectElementBtn) {
   selectElementBtn.addEventListener('click', async () => {
@@ -446,7 +446,7 @@ if (selectElementBtn) {
       return;
     }
 
-    // 注入选择器脚本
+    // Inject selector script
     chrome.tabs.sendMessage(tab.id, { action: 'startSelection' }, () => {
       if (chrome.runtime.lastError) {
         alert(t('cannotStartSelection'));
@@ -457,7 +457,7 @@ if (selectElementBtn) {
   });
 }
 
-// 打开设置页面
+// Open settings page
 const openOptionsBtn = document.getElementById('openOptions');
 if (openOptionsBtn) {
   openOptionsBtn.addEventListener('click', () => {
@@ -465,7 +465,7 @@ if (openOptionsBtn) {
   });
 }
 
-// 监听storage变化以自动刷新列表
+// Listen for storage changes to auto-refresh list
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.projects) {
     projectManager.loadProjects().then(() => {

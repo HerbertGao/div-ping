@@ -1,4 +1,4 @@
-// 项目相关类型定义
+// Project-related type definitions
 
 export interface Project {
   id: string;
@@ -14,7 +14,7 @@ export interface Project {
   tabId?: number | null;
 }
 
-// Webhook body可以是字符串或包含基本类型的对象
+// Webhook body can be a string or object containing basic types
 type WebhookBodyValue = string | number | boolean | null | WebhookBodyValue[] | { [key: string]: WebhookBodyValue };
 
 export interface WebhookConfig {
@@ -49,17 +49,17 @@ export interface WebhookVariables {
   timestamp: string;
 }
 
-// 消息类型 - 需要灵活性以支持不同的消息格式
+// Message types - need flexibility to support different message formats
 export interface MessageRequest {
   action: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 消息接口需要any类型以支持动态属性
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Message interface needs any type to support dynamic properties
   [key: string]: any;
 }
 
 export interface MessageResponse {
   success: boolean;
   error?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 响应接口需要any类型以支持动态属性
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Response interface needs any type to support dynamic properties
   [key: string]: any;
 }
 

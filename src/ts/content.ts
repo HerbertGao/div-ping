@@ -2,7 +2,7 @@ import { Project, WebhookConfig, MessageRequest, MessageResponse } from './types
 import { DEFAULTS, LIMITS } from './constants';
 import { t } from './i18n';
 
-// 元素选择模式
+// Element selection mode
 class ElementSelector {
   private isSelecting: boolean = false;
   private highlightedElement: HTMLElement | null = null;
@@ -99,24 +99,24 @@ class ElementSelector {
   }
 
   private getSelector(element: HTMLElement): string {
-    // 优先使用ID
+    // Prefer using ID
     if (element.id) {
       return `#${element.id}`;
     }
 
-    // 使用类名和标签
+    // Use class name and tag
     const tag = element.tagName.toLowerCase();
     const classes = Array.from(element.classList).slice(0, 3).join('.');
 
     if (classes) {
       const selector = `${tag}.${classes}`;
-      // 检查选择器是否唯一
+      // Check if selector is unique
       if (document.querySelectorAll(selector).length === 1) {
         return selector;
       }
     }
 
-    // 使用nth-child
+    // Use nth-child
     const parent = element.parentElement;
     if (parent) {
       const siblings = Array.from(parent.children);
@@ -138,7 +138,7 @@ class ElementSelector {
       ? existingProject.lastContent || (element ? this.getElementContent(element) : '')
       : this.getElementContent(element!);
 
-    // 创建配置对话框
+    // Create configuration dialog
     const dialog = document.createElement('div');
     dialog.id = 'div-ping-config-dialog';
     dialog.innerHTML = `
@@ -309,25 +309,25 @@ class ElementSelector {
 
     document.body.appendChild(dialog);
 
-    // 获取元素引用
+    // Get element references
     const browserNotificationCheckbox = dialog.querySelector<HTMLInputElement>('#browserNotification')!;
     const enableWebhook = dialog.querySelector<HTMLInputElement>('#enableWebhook')!;
     const webhookConfig = dialog.querySelector<HTMLElement>('#webhookConfig')!;
     const testBrowserBtn = dialog.querySelector<HTMLButtonElement>('#testBrowserNotification')!;
     const testWebhookBtn = dialog.querySelector<HTMLButtonElement>('#testWebhook')!;
 
-    // 浏览器通知开关 - 控制测试按钮状态
+    // Browser notification toggle - controls test button state
     browserNotificationCheckbox.addEventListener('change', () => {
       testBrowserBtn.disabled = !browserNotificationCheckbox.checked;
     });
 
-    // Webhook开关 - 控制配置区域和测试按钮状态
+    // Webhook toggle - controls config area and test button state
     enableWebhook.addEventListener('change', () => {
       webhookConfig.style.display = enableWebhook.checked ? 'block' : 'none';
       testWebhookBtn.disabled = !enableWebhook.checked;
     });
 
-    // 测试浏览器通知按钮
+    // Test browser notification button
     testBrowserBtn.addEventListener('click', () => {
       chrome.runtime.sendMessage({
         action: 'testBrowserNotification'
@@ -335,7 +335,7 @@ class ElementSelector {
         if (chrome.runtime.lastError) {
           alert(t('communicationFailed', [chrome.runtime.lastError.message || t('unknownError')]));
         } else if (response?.success) {
-          // 通知已发送，无需额外提示（用户会在系统中看到通知）
+          // Notification sent, no additional prompt needed (user will see it in system)
           console.log('Test notification sent successfully');
         } else {
           alert(t('notificationTestFailed', [response?.error || t('unknownError')]));
@@ -343,7 +343,7 @@ class ElementSelector {
       });
     });
 
-    // 测试Webhook按钮
+    // Test webhook button
     testWebhookBtn.addEventListener('click', async () => {
       const webhookUrl = dialog.querySelector<HTMLInputElement>('#webhookUrl')!.value.trim();
       const webhookMethod = dialog.querySelector<HTMLSelectElement>('#webhookMethod')!.value;
@@ -355,19 +355,19 @@ class ElementSelector {
         return;
       }
 
-      // 禁用按钮，显示加载状态
+      // Disable button, show loading state
       testWebhookBtn.disabled = true;
       testWebhookBtn.textContent = t('sending');
 
       try {
-        // 准备webhook配置
+        // Prepare webhook configuration
         const webhookConfig: WebhookConfig = {
           enabled: true,
           url: webhookUrl,
           method: webhookMethod as 'GET' | 'POST' | 'PUT'
         };
 
-        // 添加headers（如果有）
+        // Add headers (if any)
         if (webhookHeaders) {
           try {
             const parsedHeaders = JSON.parse(webhookHeaders);
@@ -380,7 +380,7 @@ class ElementSelector {
           }
         }
 
-        // 添加body（如果有）
+        // Add body (if any)
         if (webhookBody) {
           try {
             const parsedBody = JSON.parse(webhookBody);
@@ -393,7 +393,7 @@ class ElementSelector {
           }
         }
 
-        // 发送消息到background script
+        // Send message to background script
         chrome.runtime.sendMessage({
           action: 'testWebhook',
           config: webhookConfig
@@ -408,7 +408,7 @@ class ElementSelector {
             alert(t('webhookTestFailed', [response?.error || t('unknownError')]));
           }
 
-          // 恢复按钮状态
+          // Restore button state
           testWebhookBtn.disabled = false;
           testWebhookBtn.textContent = t('test');
         });
@@ -419,14 +419,14 @@ class ElementSelector {
       }
     });
 
-    // 取消按钮
+    // Cancel button
     dialog.querySelector<HTMLButtonElement>('#cancelBtn')!.addEventListener('click', () => {
       dialog.remove();
     });
 
-    // 确认按钮
+    // Confirm button
     dialog.querySelector<HTMLButtonElement>('#confirmBtn')!.addEventListener('click', () => {
-      // 验证刷新间隔
+      // Validate refresh interval
       const intervalInput = dialog.querySelector<HTMLInputElement>('#refreshInterval')!;
       const intervalValue = parseInt(intervalInput.value);
 
@@ -447,7 +447,7 @@ class ElementSelector {
         initialContent: initialContent
       };
 
-      // Webhook配置
+      // Webhook configuration
       if (webhookEnabled) {
         config.webhook = {
           enabled: true,
@@ -460,19 +460,19 @@ class ElementSelector {
         config.webhook = { enabled: false };
       }
 
-      // 如果是编辑模式，添加项目ID
+      // If in edit mode, add project ID
       if (existingProject) {
         config.projectId = existingProject.id;
       }
 
-      // 发送到background
+      // Send to background
       chrome.runtime.sendMessage(config, (response: MessageResponse) => {
         if (chrome.runtime.lastError) {
           console.error('Failed to save project:', chrome.runtime.lastError);
           alert(t('saveFailed', [chrome.runtime.lastError.message || t('unknownError')]));
         } else if (response?.success) {
           console.log('Project saved successfully:', response.projectId);
-          // 显示成功提示
+          // Show success message
           const successMsg = document.createElement('div');
           successMsg.style.cssText = `
             position: fixed;
@@ -497,7 +497,7 @@ class ElementSelector {
   }
 
   public getElementContent(element: HTMLElement | null): string {
-    // 获取元素的文本内容和HTML
+    // Get element text content and HTML
     if (!element) {
       return '';
     }
@@ -511,25 +511,25 @@ class ElementSelector {
   }
 }
 
-// 初始化选择器
+// Initialize selector
 const selector = new ElementSelector();
 
-// 监听来自popup的消息
+// Listen for messages from popup
 chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
   if (message.action === 'startSelection') {
     selector.start();
     sendResponse({ success: true });
   } else if (message.action === 'editProject') {
-    // 显示编辑对话框
+    // Show edit dialog
     try {
-      // 先尝试找到元素以获取当前内容
+      // Try to find element to get current content
       let element: HTMLElement | null = null;
       try {
         if (message.project) {
           element = document.querySelector<HTMLElement>(message.project.selector);
         }
       } catch {
-        // 选择器可能无效，使用保存的内容
+        // Selector may be invalid, use saved content
       }
       selector.showConfigDialog(element, message.project);
       sendResponse({ success: true });
@@ -538,7 +538,7 @@ chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.r
     }
     return true;
   } else if (message.action === 'checkElement') {
-    // 检查元素内容
+    // Check element content
     try {
       if (!message.selector) {
         sendResponse({ success: false, error: 'Selector is required' });
@@ -554,7 +554,7 @@ chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.r
     } catch (error) {
       sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
-    return true; // 保持消息通道开放
+    return true; // Keep message channel open
   }
   return false;
 });

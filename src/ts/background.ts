@@ -5,18 +5,18 @@ import { TIMEOUTS, LIMITS } from './constants';
 import { t } from './i18n';
 import { validateProjectName, validateSelector, validateUrl, validateInterval, validateWebhookBody, validateWebhookHeaders } from './validation';
 
-// 监控信息接口（不再需要 intervalId）
+// Monitor info interface (no longer needs intervalId)
 interface MonitorInfo {
   project: Project;
 }
 
-// Tab获取结果接口
+// Tab retrieval result interface
 interface TabResult {
   tab: chrome.tabs.Tab;
   isNewlyCreated: boolean;
 }
 
-// Webhook变量接口
+// Webhook variables interface
 interface WebhookVariables {
   projectId: string;
   projectName: string;
@@ -27,21 +27,21 @@ interface WebhookVariables {
   timestamp: string;
 }
 
-// 后台服务工作器
+// Background service worker
 class MonitorManager {
   private monitors: Map<string, MonitorInfo> = new Map();
-  private tabCache: Map<string, number> = new Map(); // 缓存每个URL对应的标签页ID
+  private tabCache: Map<string, number> = new Map(); // Cache tab ID for each URL
 
   constructor() {
     this.init();
     this.setupTabCleanup();
   }
 
-  // 设置标签页清理监听器
+  // Setup tab cleanup listeners
   private setupTabCleanup(): void {
-    // 监听标签页关闭事件，清理缓存
+    // Listen for tab close events and clean cache
     chrome.tabs.onRemoved.addListener((tabId) => {
-      // 查找并删除缓存中的标签页
+      // Find and remove tab from cache
       for (const [url, cachedTabId] of this.tabCache.entries()) {
         if (cachedTabId === tabId) {
           this.tabCache.delete(url);
@@ -51,25 +51,25 @@ class MonitorManager {
       }
     });
 
-    // 监听标签页更新事件（URL改变时更新缓存）
+    // Listen for tab update events (update cache when URL changes)
     chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       if (changeInfo.url) {
-        // 移除旧URL的缓存
+        // Remove old URL from cache
         for (const [url, cachedTabId] of this.tabCache.entries()) {
           if (cachedTabId === tabId) {
             this.tabCache.delete(url);
             break;
           }
         }
-        // 添加新URL的缓存，但先检查缓存大小限制
+        // Add new URL to cache, but check cache size limit first
         this.addToTabCache(changeInfo.url, tabId);
       }
     });
   }
 
-  // 添加标签页到缓存，强制执行大小限制
+  // Add tab to cache with size limit enforcement
   private addToTabCache(url: string, tabId: number): void {
-    // 如果缓存已满，移除最旧的条目（FIFO策略）
+    // If cache is full, remove oldest entry (FIFO strategy)
     if (this.tabCache.size >= LIMITS.MAX_TAB_CACHE_SIZE) {
       const firstKey = this.tabCache.keys().next().value;
       if (firstKey) {
@@ -80,63 +80,63 @@ class MonitorManager {
     this.tabCache.set(url, tabId);
   }
 
-  // 验证Webhook URL安全性（防止SSRF攻击）
+  // Validate webhook URL security (prevent SSRF attacks)
   private validateWebhookUrl(urlString: string): boolean {
     try {
       const url = new URL(urlString);
 
-      // 只允许HTTP和HTTPS协议
+      // Only allow HTTP and HTTPS protocols
       if (!['http:', 'https:'].includes(url.protocol)) {
         throw new Error(t('ssrfHttpOnly'));
       }
 
-      // 警告非HTTPS URL
+      // Warn about non-HTTPS URLs
       if (url.protocol === 'http:') {
         console.warn(t('ssrfHttpWarning'));
       }
 
-      // 获取hostname
+      // Get hostname
       const hostname = url.hostname.toLowerCase();
 
-      // 禁止特定的localhost主机名
+      // Block specific localhost hostnames
       if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
         throw new Error(t('ssrfLocalhostBlocked'));
       }
 
-      // 禁止内网域名后缀
+      // Block internal domain suffixes
       if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
         throw new Error(t('ssrfInternalDomainBlocked'));
       }
 
-      // 尝试解析为IP地址
+      // Try to parse as IP address
       if (ipaddr.isValid(hostname)) {
         const addr = ipaddr.parse(hostname);
 
-        // 检查IP地址范围
+        // Check IP address range
         const range = addr.range();
 
-        // 禁止的IP地址范围
+        // Forbidden IP address ranges
         const forbiddenRanges = [
-          'unspecified',    // 0.0.0.0 或 ::
+          'unspecified',    // 0.0.0.0 or ::
           'broadcast',      // 255.255.255.255
-          'multicast',      // 224.0.0.0/4 或 ff00::/8
-          'linkLocal',      // 169.254.0.0/16 或 fe80::/10
-          'loopback',       // 127.0.0.0/8 或 ::1
-          'private',        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 或 fc00::/7
-          'reserved',       // 保留地址
+          'multicast',      // 224.0.0.0/4 or ff00::/8
+          'linkLocal',      // 169.254.0.0/16 or fe80::/10
+          'loopback',       // 127.0.0.0/8 or ::1
+          'private',        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 or fc00::/7
+          'reserved',       // Reserved addresses
           'carrierGradeNat', // 100.64.0.0/10
-          'uniqueLocal'     // IPv6 唯一本地地址 fc00::/7
+          'uniqueLocal'     // IPv6 unique local addresses fc00::/7
         ];
 
         if (forbiddenRanges.includes(range)) {
           throw new Error(t('ssrfIpRangeBlocked', [range]));
         }
 
-        // IPv4特殊检查：测试网络和基准测试网络
+        // IPv4 special checks: test networks and benchmark networks
         if (addr.kind() === 'ipv4') {
           const bytes = addr.toByteArray();
 
-          // 192.0.0.0/24 (IETF协议分配)
+          // 192.0.0.0/24 (IETF Protocol Assignments)
           if (bytes[0] === 192 && bytes[1] === 0 && bytes[2] === 0) {
             throw new Error(t('ssrfIetfAddressBlocked'));
           }
@@ -146,7 +146,7 @@ class MonitorManager {
             throw new Error(t('ssrfTestNetworkBlocked'));
           }
 
-          // 198.18.0.0/15 (基准测试)
+          // 198.18.0.0/15 (Benchmarking)
           if (bytes[0] === 198 && (bytes[1] === 18 || bytes[1] === 19)) {
             throw new Error(t('ssrfBenchmarkBlocked'));
           }
@@ -162,11 +162,11 @@ class MonitorManager {
           }
         }
 
-        // IPv6特殊检查：IPv4映射地址
+        // IPv6 special checks: IPv4-mapped addresses
         if (addr.kind() === 'ipv6') {
           const ipv6Addr = addr as ipaddr.IPv6;
           if (ipv6Addr.isIPv4MappedAddress()) {
-            // 获取映射的IPv4地址并递归检查
+            // Get mapped IPv4 address and check recursively
             const ipv4 = ipv6Addr.toIPv4Address();
             const ipv4Range = ipv4.range();
 
@@ -187,7 +187,7 @@ class MonitorManager {
   }
 
   private async init(): Promise<void> {
-    // 加载已保存的项目并启动活动监控
+    // Load saved projects and start active monitors
     const projects = await storageManager.getProjects();
 
     projects.forEach(project => {
@@ -196,17 +196,17 @@ class MonitorManager {
       }
     });
 
-    // 监听消息
+    // Listen for messages
     chrome.runtime.onMessage.addListener((message: MessageRequest, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
-      // 异步处理消息
+      // Handle messages asynchronously
       this.handleMessage(message, sender, sendResponse).catch(error => {
         console.error('Error handling message:', error);
         sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       });
-      return true; // 保持消息通道开放以支持异步响应
+      return true; // Keep message channel open for async responses
     });
 
-    // 注意: 现在使用临时标签页,不需要监听标签页关闭事件
+    // Note: Now using temporary tabs, no need to listen for tab close events
   }
 
   private async handleMessage(message: MessageRequest, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void): Promise<void> {
@@ -251,7 +251,7 @@ class MonitorManager {
         }
 
         case 'elementSelected': {
-          // 创建新项目
+          // Create new project
           if (!message.url || !message.selector) {
             sendResponse({ success: false, error: 'URL and selector are required' });
             break;
@@ -315,12 +315,12 @@ class MonitorManager {
             tabId: sender.tab?.id || null
           };
 
-          // 保存到storage
+          // Save to storage
           await storageManager.addProject(project);
 
           console.log('Project saved:', project);
 
-          // 启动监控
+          // Start monitoring
           this.startMonitor(project);
 
           sendResponse({ success: true, projectId: project.id });
@@ -328,13 +328,13 @@ class MonitorManager {
         }
 
         case 'updateProject': {
-          // 更新现有项目
+          // Update existing project
           if (!message.projectId || !message.name || !message.selector || message.interval === undefined || message.browserNotification === undefined) {
             sendResponse({ success: false, error: 'Required fields missing for update' });
             break;
           }
 
-          // 使用 storageManager 原子性更新
+          // Use storageManager for atomic update
           const updatedProject = await storageManager.updateProject(message.projectId, {
             name: message.name,
             selector: message.selector,
@@ -351,7 +351,7 @@ class MonitorManager {
 
           console.log('Project updated:', updatedProject);
 
-          // 如果项目是活跃的，重新启动监控
+          // If project is active, restart monitoring
           if (updatedProject.active) {
             this.stopMonitor(message.projectId);
             this.startMonitor(updatedProject);
@@ -362,7 +362,7 @@ class MonitorManager {
         }
 
         case 'testBrowserNotification': {
-          // 测试浏览器通知
+          // Test browser notification
           chrome.notifications.create(
             {
               type: 'basic',
@@ -385,7 +385,7 @@ class MonitorManager {
         }
 
         case 'testWebhook': {
-          // 测试Webhook
+          // Test webhook
           if (!message.config) {
             sendResponse({ success: false, error: 'Webhook config is required' });
             break;
@@ -409,31 +409,31 @@ class MonitorManager {
   }
 
   private startMonitor(project: Project): void {
-    // 停止已存在的监控
+    // Stop existing monitor
     this.stopMonitor(project.id);
 
     console.log(`Starting monitor for project: ${project.name}`);
 
-    // 使用 chrome.alarms API 代替 setInterval
-    // alarm 名称使用 project.id 作为标识
+    // Use chrome.alarms API instead of setInterval
+    // Use project.id as alarm name identifier
     const alarmName = `monitor_${project.id}`;
 
-    // 创建周期性 alarm，间隔时间转换为分钟（alarms API 最小间隔是 1 分钟）
+    // Create periodic alarm, convert interval to minutes (alarms API minimum is 1 minute)
     const periodInMinutes = Math.max(1, project.interval / 60000);
 
     chrome.alarms.create(alarmName, {
-      delayInMinutes: 0, // 立即触发第一次
+      delayInMinutes: 0, // Trigger immediately first time
       periodInMinutes: periodInMinutes
     });
 
-    // 保存监控信息
+    // Save monitor info
     this.monitors.set(project.id, {
       project
     });
 
     console.log(`Alarm created: ${alarmName} with period ${periodInMinutes} minutes`);
 
-    // 立即检查一次（不等待 alarm 触发）
+    // Check immediately (do not wait for alarm to trigger)
     this.checkElement(project);
   }
 
@@ -442,7 +442,7 @@ class MonitorManager {
     if (monitor) {
       console.log(`Stopping monitor for project: ${monitor.project.name}`);
 
-      // 清除 alarm
+      // Clear alarm
       const alarmName = `monitor_${projectId}`;
       chrome.alarms.clear(alarmName);
 
@@ -455,47 +455,47 @@ class MonitorManager {
    * 优先重用已存在的标签页，减少资源消耗
    */
   private async getOrCreateTab(url: string): Promise<TabResult> {
-    // 1. 检查缓存中是否有该URL的标签页
+    // 1. Check if there is a cached tab for this URL
     const cachedTabId = this.tabCache.get(url);
     if (cachedTabId) {
       try {
         const tab = await chrome.tabs.get(cachedTabId);
-        // 验证标签页是否仍然有效且URL匹配
+        // Verify tab is still valid and URL matches
         if (tab && tab.url === url) {
           console.log(`Reusing cached tab ${cachedTabId} for URL: ${url}`);
           return { tab, isNewlyCreated: false };
         } else {
-          // 缓存失效，清理
+          // Cache invalid, clean up
           this.tabCache.delete(url);
         }
       } catch (error) {
-        // 标签页已不存在，清理缓存
+        // Tab no longer exists, clean cache
         console.warn(`Tab ${cachedTabId} no longer exists:`, error);
         this.tabCache.delete(url);
       }
     }
 
-    // 2. 查询是否有其他打开的标签页
+    // 2. Query for other open tabs
     const existingTabs = await chrome.tabs.query({ url });
     if (existingTabs.length > 0) {
       const tab = existingTabs[0];
       if (tab && tab.id) {
         console.log(`Found existing tab ${tab.id} for URL: ${url}`);
-        // 更新缓存
+        // Update cache
         this.addToTabCache(url, tab.id);
         return { tab, isNewlyCreated: false };
       }
     }
 
-    // 3. 创建新标签页（后台打开）
+    // 3. Create new tab (open in background)
     console.log(`Creating new background tab for URL: ${url}`);
     const newTab = await chrome.tabs.create({
       url,
-      active: false,  // 不激活标签页
-      pinned: false   // 不固定标签页
+      active: false,  // Do not activate tab
+      pinned: false   // Do not pin tab
     });
 
-    // 添加到缓存
+    // Add to cache
     this.addToTabCache(url, newTab.id!);
 
     return { tab: newTab, isNewlyCreated: true };
@@ -508,15 +508,15 @@ class MonitorManager {
     try {
       console.log(`[${project.name}] Getting or creating tab for URL: ${project.url}`);
 
-      // 获取或创建标签页，返回结果包含标签页和是否为新创建的标志
+      // Get or create tab, return result contains tab and isNewlyCreated flag
       const tabResult = await this.getOrCreateTab(project.url);
       tab = tabResult.tab;
       isNewlyCreatedTab = tabResult.isNewlyCreated;
 
-      // 等待页面加载完成
+      // Wait for page to load
       await this.waitForTabLoad(tab.id!);
 
-      // 向content script发送检查请求
+      // Send check request to content script
       const response = await chrome.tabs.sendMessage(tab.id!, {
         action: 'checkElement',
         selector: project.selector
@@ -527,8 +527,8 @@ class MonitorManager {
 
         console.log(`[${project.name}] Content retrieved, length: ${newContent.length}`);
 
-        // 使用原子性更新来防止竞态条件
-        // 先更新内容，updateProject 会返回更新前的项目状态
+        // Use atomic update to prevent race conditions
+        // Update content first, updateProject returns state before update
         const updatedProject = await storageManager.updateProject(project.id, {
           lastContent: newContent,
           lastChecked: new Date().toISOString()
@@ -539,10 +539,10 @@ class MonitorManager {
           return;
         }
 
-        // 使用更新前的 lastContent 进行比较
+        // Use lastContent before update for comparison
         const currentLastContent = updatedProject.lastContent;
 
-        // 检查内容是否变化（基于上一次的内容）
+        // Check if content has changed (based on last content)
         const hasChanged = currentLastContent && newContent !== currentLastContent;
 
         if (hasChanged) {
@@ -552,7 +552,7 @@ class MonitorManager {
           console.log(`[${project.name}] No change detected`);
         }
 
-        // 记录日志
+        // Log entry
         await this.addLog(project.id, {
           timestamp: new Date().toISOString(),
           content: newContent,
@@ -563,7 +563,7 @@ class MonitorManager {
       } else {
         console.error(`[${project.name}] Failed to check element: ${response.error}`);
 
-        // 记录失败日志
+        // Log failure
         await this.addLog(project.id, {
           timestamp: new Date().toISOString(),
           error: response.error,
@@ -573,24 +573,24 @@ class MonitorManager {
     } catch (error) {
       console.error(`[${project.name}] Error checking element:`, error);
 
-      // 记录失败日志
+      // Log failure
       await this.addLog(project.id, {
         timestamp: new Date().toISOString(),
         error: error instanceof Error ? error.message : 'Unknown error',
         success: false
       });
     } finally {
-      // 只关闭新创建的临时标签页，不关闭重用的标签页
+      // Only close newly created temporary tabs, not reused tabs
       if (isNewlyCreatedTab && tab?.id) {
         try {
           await chrome.tabs.remove(tab.id);
           console.log(`[${project.name}] Temp tab ${tab.id} closed successfully`);
         } catch (closeError) {
           console.error(`[${project.name}] Failed to close temp tab ${tab.id}:`, closeError);
-          // 即使关闭失败，也要从缓存中移除，避免缓存污染
-          // 这样下次会重新创建标签页，而不是尝试重用一个可能已经无效的标签页
+          // Remove from cache even if close fails to avoid cache pollution
+          // This ensures next time a new tab is created instead of reusing potentially invalid tab
         } finally {
-          // 无论关闭成功与否，都从缓存中移除
+          // Remove from cache regardless of close success
           this.tabCache.delete(project.url);
         }
       } else if (tab?.id) {
@@ -638,7 +638,7 @@ class MonitorManager {
   private async notifyChange(project: Project, oldContent: string, newContent: string): Promise<void> {
     const message = t('changeNotificationBody', [project.name, project.url]);
 
-    // 浏览器通知
+    // Browser notification
     if (project.browserNotification) {
       chrome.notifications.create(
         {
@@ -658,7 +658,7 @@ class MonitorManager {
       );
     }
 
-    // Webhook通知
+    // Webhook notification
     const webhook = project.webhook;
 
     if (webhook?.enabled && webhook.url) {
@@ -671,7 +671,7 @@ class MonitorManager {
     }
   }
 
-  // 变量替换函数 - 用于URL参数
+  // Variable replacement function - for URL parameters
   private replaceVariablesInUrl(template: string, variables: WebhookVariables): string {
     if (!template) return template;
 
@@ -683,15 +683,15 @@ class MonitorManager {
     return result;
   }
 
-  // 变量替换函数 - 用于请求头（不使用URL编码）
+  // Variable replacement function - for request headers (no URL encoding)
   private replaceVariablesInHeader(template: string, variables: WebhookVariables): string {
     if (!template) return template;
 
     let result = template;
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      // 对于HTTP头，只替换值，不进行URL编码
-      // 移除控制字符和换行符以防止头注入攻击
+      // For HTTP headers, only replace values without URL encoding
+      // Remove control characters and newlines to prevent header injection
       // eslint-disable-next-line no-control-regex -- Intentionally matching control characters for security (header injection prevention)
       const sanitizedValue = String(value).replace(/[\r\n\x00-\x1F\x7F]/g, '');
       result = result.replace(regex, sanitizedValue);
@@ -699,24 +699,24 @@ class MonitorManager {
     return result;
   }
 
-  // 变量替换函数 - 用于JSON body（正确处理JSON字符串转义）
+  // Variable replacement function - for JSON body (properly handle JSON string escaping)
   private replaceVariablesInJson(template: string, variables: WebhookVariables): string {
     if (!template) return template;
 
     let result = template;
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      // 将值转为JSON字符串，然后移除外层引号
-      // 这样可以正确处理字符串中的特殊字符（如双引号、换行符等）
+      // Convert value to JSON string, then remove outer quotes
+      // This correctly handles special characters in strings (like quotes, newlines, etc.)
       const jsonValue = JSON.stringify(String(value));
-      // 移除 JSON.stringify 添加的外层引号
+      // Remove outer quotes added by JSON.stringify
       const valueWithoutOuterQuotes = jsonValue.slice(1, -1);
       result = result.replace(regex, valueWithoutOuterQuotes);
     }
     return result;
   }
 
-  // 发送Webhook
+  // Send webhook
   private async sendWebhook(webhook: WebhookConfig, project: Project, oldContent: string, newContent: string): Promise<Response> {
     const timestamp = new Date().toISOString();
 
@@ -724,11 +724,11 @@ class MonitorManager {
       throw new Error('Webhook URL is required');
     }
 
-    // 获取用户配置的超时设置
+    // Get user-configured timeout setting
     const settings = await storageManager.getSettings<Settings>();
-    const timeoutMs = (settings.webhookTimeout || 10) * 1000; // 转换为毫秒，默认10秒
+    const timeoutMs = (settings.webhookTimeout || 10) * 1000; // Convert to milliseconds, default 10 seconds
 
-    // 验证Webhook URL（防止SSRF）
+    // Validate webhook URL (prevent SSRF)
     try {
       this.validateWebhookUrl(webhook.url);
     } catch (error) {
@@ -736,7 +736,7 @@ class MonitorManager {
       throw new Error(t('webhookUrlValidationFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
-    // 可用变量
+    // Available variables
     const variables: WebhookVariables = {
       projectId: project.id,
       projectName: project.name,
@@ -747,10 +747,10 @@ class MonitorManager {
       timestamp: timestamp
     };
 
-    // 替换URL中的变量
+    // Replace variables in URL
     let url = this.replaceVariablesInUrl(webhook.url, variables);
 
-    // 再次验证替换后的URL
+    // Validate URL again after substitution
     try {
       this.validateWebhookUrl(url);
     } catch (error) {
@@ -758,13 +758,13 @@ class MonitorManager {
       throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
-    // 准备请求配置
+    // Prepare request configuration
     const fetchOptions: RequestInit = {
       method: webhook.method || 'POST',
-      redirect: 'manual'  // 防止重定向到内网地址（SSRF保护）
+      redirect: 'manual'  // Prevent redirect to internal addresses (SSRF protection)
     };
 
-    // 处理请求头
+    // Handle request headers
     const headers: Record<string, string> = {};
     if (webhook.headers) {
       try {
@@ -772,12 +772,12 @@ class MonitorManager {
           ? JSON.parse(webhook.headers)
           : webhook.headers;
 
-        // 替换请求头中的变量
+        // Replace variables in request headers
         for (const [key, value] of Object.entries(customHeaders)) {
           headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
 
-        // 验证替换后的请求头（包括格式和大小）
+        // Validate headers after substitution (format and size)
         const headersValidation = validateWebhookHeaders(headers);
         if (!headersValidation.valid) {
           throw new Error(headersValidation.error);
@@ -791,23 +791,23 @@ class MonitorManager {
       fetchOptions.headers = headers;
     }
 
-    // 处理请求体 (仅POST/PUT/PATCH)
+    // Handle request body (POST/PUT/PATCH only)
     if (['POST', 'PUT', 'PATCH'].includes((fetchOptions.method as string).toUpperCase())) {
       if (webhook.body) {
         try {
-          // 用户自定义body
+          // User-defined body
           const bodyTemplate = typeof webhook.body === 'string'
             ? webhook.body
             : JSON.stringify(webhook.body);
 
-          // 替换变量，使用专门的JSON替换函数正确处理转义
+          // Replace variables using dedicated JSON replacement function for proper escaping
           const bodyStr = this.replaceVariablesInJson(bodyTemplate, variables);
 
-          // 验证JSON并设置body
+          // Validate JSON and set body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
 
-          // 验证变量替换后的body大小
+          // Validate body size after variable substitution
           const finalBodySize = new Blob([fetchOptions.body]).size;
           if (finalBodySize > LIMITS.MAX_WEBHOOK_BODY_SIZE) {
             throw new Error(t('webhookBodySizeExceeded', [finalBodySize.toString(), LIMITS.MAX_WEBHOOK_BODY_SIZE.toString()]));
@@ -823,10 +823,10 @@ class MonitorManager {
           throw new Error(t('webhookBodyJsonError') + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
-      // 如果webhook.body为空，则不设置body
+      // If webhook.body is empty, do not set body
     }
 
-    // 发送请求（带超时控制）
+    // Send request (with timeout control)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -837,7 +837,7 @@ class MonitorManager {
       });
       clearTimeout(timeoutId);
 
-      // 检查是否为重定向响应（SSRF保护）
+      // Check if response is redirect (SSRF protection)
       if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
         const redirectLocation = response.headers.get('location');
         throw new Error(t('webhookRedirectBlocked', [redirectLocation ? ` (${t('redirectTarget')}: ${redirectLocation})` : '']));
@@ -857,7 +857,7 @@ class MonitorManager {
     }
   }
 
-  // 测试Webhook
+  // Test webhook
   private async testWebhook(config: WebhookConfig): Promise<Response> {
     const timestamp = new Date().toISOString();
 
@@ -865,11 +865,11 @@ class MonitorManager {
       throw new Error('Webhook URL is required');
     }
 
-    // 获取用户配置的超时设置
+    // Get user-configured timeout setting
     const settings = await storageManager.getSettings<Settings>();
-    const timeoutMs = (settings.webhookTimeout || 10) * 1000; // 转换为毫秒，默认10秒
+    const timeoutMs = (settings.webhookTimeout || 10) * 1000; // Convert to milliseconds, default 10 seconds
 
-    // 验证Webhook URL（防止SSRF）
+    // Validate webhook URL (prevent SSRF)
     try {
       this.validateWebhookUrl(config.url);
     } catch (error) {
@@ -877,7 +877,7 @@ class MonitorManager {
       throw new Error(t('webhookUrlValidationFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
-    // 测试用变量
+    // Test variables
     const variables: WebhookVariables = {
       projectId: 'test-project-id',
       projectName: t('testProjectName'),
@@ -888,10 +888,10 @@ class MonitorManager {
       timestamp: timestamp
     };
 
-    // 替换URL中的变量
+    // Replace variables in URL
     let url = this.replaceVariablesInUrl(config.url, variables);
 
-    // 再次验证替换后的URL
+    // Validate URL again after substitution
     try {
       this.validateWebhookUrl(url);
     } catch (error) {
@@ -899,13 +899,13 @@ class MonitorManager {
       throw new Error(t('webhookUrlAfterSubstitutionFailedWithError', [error instanceof Error ? error.message : 'Unknown error']));
     }
 
-    // 准备请求配置
+    // Prepare request configuration
     const fetchOptions: RequestInit = {
       method: config.method || 'POST',
-      redirect: 'manual'  // 防止重定向到内网地址（SSRF保护）
+      redirect: 'manual'  // Prevent redirect to internal addresses (SSRF protection)
     };
 
-    // 处理请求头
+    // Handle request headers
     const headers: Record<string, string> = {};
     if (config.headers) {
       try {
@@ -913,12 +913,12 @@ class MonitorManager {
           ? JSON.parse(config.headers)
           : config.headers;
 
-        // 替换请求头中的变量
+        // Replace variables in request headers
         for (const [key, value] of Object.entries(customHeaders)) {
           headers[key] = this.replaceVariablesInHeader(String(value), variables);
         }
 
-        // 验证替换后的请求头（包括格式和大小）
+        // Validate headers after substitution (format and size)
         const headersValidation = validateWebhookHeaders(headers);
         if (!headersValidation.valid) {
           throw new Error(headersValidation.error);
@@ -932,23 +932,23 @@ class MonitorManager {
       fetchOptions.headers = headers;
     }
 
-    // 处理请求体 (仅POST/PUT/PATCH)
+    // Handle request body (POST/PUT/PATCH only)
     if (['POST', 'PUT', 'PATCH'].includes((fetchOptions.method as string).toUpperCase())) {
       if (config.body) {
         try {
-          // 用户自定义body
+          // User-defined body
           const bodyTemplate = typeof config.body === 'string'
             ? config.body
             : JSON.stringify(config.body);
 
-          // 替换变量，使用专门的JSON替换函数正确处理转义
+          // Replace variables using dedicated JSON replacement function for proper escaping
           const bodyStr = this.replaceVariablesInJson(bodyTemplate, variables);
 
-          // 验证JSON并设置body
+          // Validate JSON and set body
           const bodyContent = JSON.parse(bodyStr);
           fetchOptions.body = JSON.stringify(bodyContent);
 
-          // 验证变量替换后的body大小
+          // Validate body size after variable substitution
           const finalBodySize = new Blob([fetchOptions.body]).size;
           if (finalBodySize > LIMITS.MAX_WEBHOOK_BODY_SIZE) {
             throw new Error(t('webhookBodySizeExceeded', [finalBodySize.toString(), LIMITS.MAX_WEBHOOK_BODY_SIZE.toString()]));
@@ -964,10 +964,10 @@ class MonitorManager {
           throw new Error(t('requestBodyJsonError') + (error instanceof Error ? error.message : 'Unknown error'));
         }
       }
-      // 如果config.body为空，则不设置body
+      // If config.body is empty, do not set body
     }
 
-    // 发送请求（带超时控制）
+    // Send request (with timeout control)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -978,13 +978,13 @@ class MonitorManager {
       });
       clearTimeout(timeoutId);
 
-      // 检查是否为重定向响应（SSRF保护）
+      // Check if response is redirect (SSRF protection)
       if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
         const redirectLocation = response.headers.get('location');
         throw new Error(t('webhookRedirectBlocked', [redirectLocation ? ` (${t('redirectTarget')}: ${redirectLocation})` : '']));
       }
 
-      // 返回响应（无论成功还是失败，让调用方处理）
+      // Return response (whether success or failure, let caller handle)
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
@@ -996,26 +996,26 @@ class MonitorManager {
   }
 }
 
-// 初始化监控管理器
+// Initialize monitor manager
 const monitorManager = new MonitorManager();
 
-// 监听 alarms 触发事件
+// Listen for alarm trigger events
 chrome.alarms.onAlarm.addListener((alarm) => {
   console.log(`Alarm triggered: ${alarm.name}`);
 
-  // 检查是否是监控 alarm
+  // Check if this is a monitor alarm
   if (alarm.name.startsWith('monitor_')) {
     const projectId = alarm.name.replace('monitor_', '');
 
-    // 从 storage 重新加载项目信息（确保使用最新配置）
+    // Reload project info from storage (ensure using latest config)
     storageManager.getProjects().then((projects) => {
       const project = projects.find(p => p.id === projectId);
 
       if (project && project.active) {
-        // 执行检查
+        // Perform check
         monitorManager.checkElement(project);
       } else {
-        // 项目不存在或已停用，清除 alarm
+        // Project does not exist or is inactive, clear alarm
         console.log(`Project ${projectId} not found or inactive, clearing alarm`);
         chrome.alarms.clear(alarm.name);
       }
@@ -1023,7 +1023,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-// 安装时请求通知权限
+// Request notification permission on install
 chrome.runtime.onInstalled.addListener(() => {
   console.log('div-ping extension installed');
 });

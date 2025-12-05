@@ -2,7 +2,7 @@ import { Settings, ExportData } from './types';
 import { storageManager } from './storageManager';
 import { t, initI18nForHTML } from './i18n';
 
-// 设置页面逻辑
+// Options page logic
 class OptionsManager {
   private defaultSettings: Settings = {
     defaultInterval: 30,
@@ -31,7 +31,7 @@ class OptionsManager {
     const data = await storageManager.getSettings<Settings>();
     const settings: Settings = { ...this.defaultSettings, ...data };
 
-    // 填充表单
+    // Fill form
     this.getElement<HTMLInputElement>('defaultInterval').value = settings.defaultInterval.toString();
     this.getElement<HTMLInputElement>('defaultBrowserNotification').checked = settings.defaultBrowserNotification;
     this.getElement<HTMLInputElement>('defaultWebhook').checked = settings.defaultWebhook;
@@ -129,7 +129,7 @@ class OptionsManager {
         await this.loadStats();
         this.showStatus(t('dataImported'), 'success');
 
-        // 重启所有活动监控
+        // Restart all active monitors
         data.projects.forEach(project => {
           if (project.active) {
             chrome.runtime.sendMessage({ action: 'startMonitor', project });
@@ -150,7 +150,7 @@ class OptionsManager {
       await this.loadStats();
       this.showStatus(t('dataCleared'), 'success');
 
-      // 停止所有监控
+      // Stop all monitors
       chrome.runtime.sendMessage({ action: 'stopAllMonitors' });
     }
   }
@@ -189,7 +189,7 @@ class OptionsManager {
         const file = target.files[0];
         if (file) {
           this.handleImportFile(file);
-          target.value = ''; // 重置文件输入
+          target.value = ''; // Reset file input
         }
       }
     });
@@ -208,5 +208,5 @@ class OptionsManager {
   }
 }
 
-// 初始化
+// Initialize
 new OptionsManager();
