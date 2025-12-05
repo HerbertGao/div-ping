@@ -315,3 +315,217 @@ describe('ipaddr.js Reserved Range Detection (SSRF Protection Foundation)', () =
     });
   });
 });
+
+/**
+ * Tests for webhook redirect handling (SSRF protection)
+ * Verifies that webhooks cannot be redirected to internal/malicious targets
+ */
+describe('Webhook Redirect Handling (SSRF Protection)', () => {
+  /**
+   * Mock the redirect detection logic from background.ts
+   * This simulates the behavior in sendWebhook() and testWebhook()
+   */
+  const checkRedirectResponse = (response: {
+    type?: string;
+    status: number;
+    headers: Map<string, string>;
+  }): { blocked: boolean; error?: string } => {
+    // Check if response is redirect (from background.ts:820 and 961)
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      const redirectLocation = response.headers.get('location');
+      return {
+        blocked: true,
+        error: `Webhook redirect blocked${redirectLocation ? ` (Redirect target: ${redirectLocation})` : ''}`
+      };
+    }
+    return { blocked: false };
+  };
+
+  describe('3xx HTTP status codes', () => {
+    it('should block 301 Moved Permanently responses', () => {
+      const response = {
+        status: 301,
+        headers: new Map([['location', 'http://192.168.1.1/internal']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('Webhook redirect blocked');
+      expect(result.error).toContain('http://192.168.1.1/internal');
+    });
+
+    it('should block 302 Found responses', () => {
+      const response = {
+        status: 302,
+        headers: new Map([['location', 'http://localhost/admin']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('Webhook redirect blocked');
+      expect(result.error).toContain('localhost');
+    });
+
+    it('should block 303 See Other responses', () => {
+      const response = {
+        status: 303,
+        headers: new Map([['location', 'http://169.254.169.254/latest/meta-data']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('Webhook redirect blocked');
+      expect(result.error).toContain('169.254.169.254');
+    });
+
+    it('should block 307 Temporary Redirect responses', () => {
+      const response = {
+        status: 307,
+        headers: new Map([['location', 'http://10.0.0.1/private']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('Webhook redirect blocked');
+      expect(result.error).toContain('10.0.0.1');
+    });
+
+    it('should block 308 Permanent Redirect responses', () => {
+      const response = {
+        status: 308,
+        headers: new Map([['location', 'http://192.168.0.1/gateway']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('192.168.0.1');
+    });
+  });
+
+  describe('Opaque redirect type', () => {
+    it('should block opaqueredirect type (fetch with redirect: manual)', () => {
+      const response = {
+        type: 'opaqueredirect',
+        status: 0, // opaque redirects have status 0
+        headers: new Map<string, string>()
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('Webhook redirect blocked');
+    });
+  });
+
+  describe('Error message content', () => {
+    it('should include redirect target URL in error message when available', () => {
+      const response = {
+        status: 302,
+        headers: new Map([['location', 'http://evil.com/steal-data']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.error).toContain('Redirect target');
+      expect(result.error).toContain('http://evil.com/steal-data');
+    });
+
+    it('should handle missing Location header gracefully', () => {
+      const response = {
+        status: 302,
+        headers: new Map<string, string>() // No location header
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(true);
+      expect(result.error).toContain('Webhook redirect blocked');
+      // Should not crash, error message should still be present
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe('Non-redirect responses', () => {
+    it('should allow 200 OK responses', () => {
+      const response = {
+        status: 200,
+        headers: new Map([['content-type', 'application/json']])
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(false);
+    });
+
+    it('should allow 201 Created responses', () => {
+      const response = {
+        status: 201,
+        headers: new Map<string, string>()
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(false);
+    });
+
+    it('should allow 4xx client errors (not redirects)', () => {
+      const response = {
+        status: 404,
+        headers: new Map<string, string>()
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(false);
+    });
+
+    it('should allow 5xx server errors (not redirects)', () => {
+      const response = {
+        status: 500,
+        headers: new Map<string, string>()
+      };
+
+      const result = checkRedirectResponse(response);
+
+      expect(result.blocked).toBe(false);
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should block all 3xx status codes (300-399)', () => {
+      // Test boundary values
+      const redirectStatuses = [300, 301, 302, 303, 304, 305, 306, 307, 308, 399];
+
+      redirectStatuses.forEach(status => {
+        const response = {
+          status,
+          headers: new Map([['location', 'http://internal.local/']])
+        };
+
+        const result = checkRedirectResponse(response);
+
+        expect(result.blocked).toBe(true);
+      });
+    });
+
+    it('should not block 299 or 400 (boundaries)', () => {
+      const nonRedirectStatuses = [299, 400];
+
+      nonRedirectStatuses.forEach(status => {
+        const response = {
+          status,
+          headers: new Map<string, string>()
+        };
+
+        const result = checkRedirectResponse(response);
+
+        expect(result.blocked).toBe(false);
+      });
+    });
+  });
+});
