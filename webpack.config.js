@@ -9,7 +9,9 @@ const __dirname = dirname(__filename);
 /** @type {import('webpack').Configuration} */
 const config = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-  devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'inline-source-map',
+  // Source maps disabled in production to prevent source code exposure
+  // Development builds use inline-source-map for debugging
+  devtool: process.env.NODE_ENV === 'production' ? false : 'inline-source-map',
   entry: {
     background: './src/ts/background.ts',
     content: './src/ts/content.ts',
