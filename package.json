@@ -1,7 +1,7 @@
 {
   "name": "div-ping",
   "version": "1.0.0",
-  "description": "监控网页中指定DOM元素的变化，通过浏览器通知或Webhook发送提醒。",
+  "description": "Monitor changes in specified DOM elements on web pages and send alerts via browser notifications or webhooks.",
   "type": "module",
   "main": "index.js",
   "scripts": {
