@@ -95,7 +95,7 @@ class MonitorManager {
     chrome.runtime.onMessage.addListener((message: MessageRequest, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
       // Handle messages asynchronously
       this.handleMessage(message, sender, sendResponse).catch(error => {
-        console.error('Error handling message:', error);
+        console.error('Error handling message action:', message.action, error);
         sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       });
       return true; // Keep message channel open for async responses
