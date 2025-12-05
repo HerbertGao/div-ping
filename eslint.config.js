@@ -64,7 +64,7 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'error',
       'no-console': 'off',
       // Comment quality rules
       'eslint-comments/disable-enable-pair': 'error',

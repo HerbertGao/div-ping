@@ -129,14 +129,14 @@ class ElementSelector {
   }
 
   public showConfigDialog(element: HTMLElement | null, existingProject?: Project): void {
-    const selector = existingProject ? existingProject.selector : this.getSelector(element!);
+    const selector = existingProject ? existingProject.selector : (element ? this.getSelector(element) : '');
 
     // Safely get initial content:
     // - For existing projects: use lastContent if available, otherwise try element if it exists, else empty string
-    // - For new projects: element must exist (non-null assertion is safe here)
+    // - For new projects: element must exist
     const initialContent = existingProject
       ? existingProject.lastContent || (element ? this.getElementContent(element) : '')
-      : this.getElementContent(element!);
+      : (element ? this.getElementContent(element) : '');
 
     // Create configuration dialog
     const dialog = document.createElement('div');
@@ -310,11 +310,17 @@ class ElementSelector {
     document.body.appendChild(dialog);
 
     // Get element references
-    const browserNotificationCheckbox = dialog.querySelector<HTMLInputElement>('#browserNotification')!;
-    const enableWebhook = dialog.querySelector<HTMLInputElement>('#enableWebhook')!;
-    const webhookConfig = dialog.querySelector<HTMLElement>('#webhookConfig')!;
-    const testBrowserBtn = dialog.querySelector<HTMLButtonElement>('#testBrowserNotification')!;
-    const testWebhookBtn = dialog.querySelector<HTMLButtonElement>('#testWebhook')!;
+    const browserNotificationCheckbox = dialog.querySelector<HTMLInputElement>('#browserNotification');
+    const enableWebhook = dialog.querySelector<HTMLInputElement>('#enableWebhook');
+    const webhookConfig = dialog.querySelector<HTMLElement>('#webhookConfig');
+    const testBrowserBtn = dialog.querySelector<HTMLButtonElement>('#testBrowserNotification');
+    const testWebhookBtn = dialog.querySelector<HTMLButtonElement>('#testWebhook');
+
+    if (!browserNotificationCheckbox || !enableWebhook || !webhookConfig || !testBrowserBtn || !testWebhookBtn) {
+      console.error('Failed to find required dialog elements');
+      dialog.remove();
+      return;
+    }
 
     // Browser notification toggle - controls test button state
     browserNotificationCheckbox.addEventListener('change', () => {
@@ -345,10 +351,20 @@ class ElementSelector {
 
     // Test webhook button
     testWebhookBtn.addEventListener('click', async () => {
-      const webhookUrl = dialog.querySelector<HTMLInputElement>('#webhookUrl')!.value.trim();
-      const webhookMethod = dialog.querySelector<HTMLSelectElement>('#webhookMethod')!.value;
-      const webhookHeaders = dialog.querySelector<HTMLTextAreaElement>('#webhookHeaders')!.value.trim();
-      const webhookBody = dialog.querySelector<HTMLTextAreaElement>('#webhookBody')!.value.trim();
+      const webhookUrlInput = dialog.querySelector<HTMLInputElement>('#webhookUrl');
+      const webhookMethodSelect = dialog.querySelector<HTMLSelectElement>('#webhookMethod');
+      const webhookHeadersTextarea = dialog.querySelector<HTMLTextAreaElement>('#webhookHeaders');
+      const webhookBodyTextarea = dialog.querySelector<HTMLTextAreaElement>('#webhookBody');
+
+      if (!webhookUrlInput || !webhookMethodSelect || !webhookHeadersTextarea || !webhookBodyTextarea) {
+        console.error('Failed to find webhook input elements');
+        return;
+      }
+
+      const webhookUrl = webhookUrlInput.value.trim();
+      const webhookMethod = webhookMethodSelect.value;
+      const webhookHeaders = webhookHeadersTextarea.value.trim();
+      const webhookBody = webhookBodyTextarea.value.trim();
 
       if (!webhookUrl) {
         alert(t('webhookUrlEmpty'));
@@ -420,45 +436,75 @@ class ElementSelector {
     });
 
     // Cancel button
-    dialog.querySelector<HTMLButtonElement>('#cancelBtn')!.addEventListener('click', () => {
-      dialog.remove();
-    });
+    const cancelBtn = dialog.querySelector<HTMLButtonElement>('#cancelBtn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        dialog.remove();
+      });
+    }
 
     // Confirm button
-    dialog.querySelector<HTMLButtonElement>('#confirmBtn')!.addEventListener('click', () => {
-      // Validate refresh interval
-      const intervalInput = dialog.querySelector<HTMLInputElement>('#refreshInterval')!;
-      const intervalValue = parseInt(intervalInput.value);
+    const confirmBtn = dialog.querySelector<HTMLButtonElement>('#confirmBtn');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        // Validate refresh interval
+        const intervalInput = dialog.querySelector<HTMLInputElement>('#refreshInterval');
+        if (!intervalInput) {
+          console.error('Failed to find interval input');
+          return;
+        }
 
-      if (isNaN(intervalValue) || intervalValue < LIMITS.MIN_INTERVAL_SECONDS) {
-        alert(t('intervalTooSmall', [LIMITS.MIN_INTERVAL_SECONDS.toString()]));
-        intervalInput.focus();
-        return;
-      }
+        const intervalValue = parseInt(intervalInput.value);
 
-      const webhookEnabled = enableWebhook.checked;
-      const config: MessageRequest = {
-        action: existingProject ? 'updateProject' : 'elementSelected',
-        name: dialog.querySelector<HTMLInputElement>('#projectName')!.value,
-        selector: dialog.querySelector<HTMLInputElement>('#elementSelector')!.value,
-        interval: intervalValue * 1000,
-        browserNotification: dialog.querySelector<HTMLInputElement>('#browserNotification')!.checked,
-        url: existingProject ? existingProject.url : window.location.href,
-        initialContent: initialContent
-      };
+        if (isNaN(intervalValue) || intervalValue < LIMITS.MIN_INTERVAL_SECONDS) {
+          alert(t('intervalTooSmall', [LIMITS.MIN_INTERVAL_SECONDS.toString()]));
+          intervalInput.focus();
+          return;
+        }
 
-      // Webhook configuration
-      if (webhookEnabled) {
-        config.webhook = {
-          enabled: true,
-          url: dialog.querySelector<HTMLInputElement>('#webhookUrl')!.value,
-          method: dialog.querySelector<HTMLSelectElement>('#webhookMethod')!.value as 'GET' | 'POST' | 'PUT',
-          headers: dialog.querySelector<HTMLTextAreaElement>('#webhookHeaders')!.value.trim(),
-          body: dialog.querySelector<HTMLTextAreaElement>('#webhookBody')!.value.trim()
+        // Get all required form fields
+        const projectNameInput = dialog.querySelector<HTMLInputElement>('#projectName');
+        const elementSelectorInput = dialog.querySelector<HTMLInputElement>('#elementSelector');
+        const browserNotificationCheckbox = dialog.querySelector<HTMLInputElement>('#browserNotification');
+
+        if (!projectNameInput || !elementSelectorInput || !browserNotificationCheckbox) {
+          console.error('Failed to find required form fields');
+          return;
+        }
+
+        const webhookEnabled = enableWebhook.checked;
+        const config: MessageRequest = {
+          action: existingProject ? 'updateProject' : 'elementSelected',
+          name: projectNameInput.value,
+          selector: elementSelectorInput.value,
+          interval: intervalValue * 1000,
+          browserNotification: browserNotificationCheckbox.checked,
+          url: existingProject ? existingProject.url : window.location.href,
+          initialContent: initialContent
         };
-      } else {
-        config.webhook = { enabled: false };
-      }
+
+        // Webhook configuration
+        if (webhookEnabled) {
+          const webhookUrlInput = dialog.querySelector<HTMLInputElement>('#webhookUrl');
+          const webhookMethodSelect = dialog.querySelector<HTMLSelectElement>('#webhookMethod');
+          const webhookHeadersTextarea = dialog.querySelector<HTMLTextAreaElement>('#webhookHeaders');
+          const webhookBodyTextarea = dialog.querySelector<HTMLTextAreaElement>('#webhookBody');
+
+          if (!webhookUrlInput || !webhookMethodSelect || !webhookHeadersTextarea || !webhookBodyTextarea) {
+            console.error('Failed to find webhook configuration fields');
+            return;
+          }
+
+          config.webhook = {
+            enabled: true,
+            url: webhookUrlInput.value,
+            method: webhookMethodSelect.value as 'GET' | 'POST' | 'PUT',
+            headers: webhookHeadersTextarea.value.trim(),
+            body: webhookBodyTextarea.value.trim()
+          };
+        } else {
+          config.webhook = { enabled: false };
+        }
 
       // If in edit mode, add project ID
       if (existingProject) {
@@ -493,7 +539,8 @@ class ElementSelector {
       });
 
       dialog.remove();
-    });
+      });
+    }
   }
 
   public getElementContent(element: HTMLElement | null): string {

@@ -428,7 +428,9 @@ class MonitorManager {
     });
 
     // Add to cache
-    this.addToTabCache(url, newTab.id!);
+    if (newTab.id !== undefined) {
+      this.addToTabCache(url, newTab.id);
+    }
 
     return { tab: newTab, isNewlyCreated: true };
   }
@@ -445,11 +447,16 @@ class MonitorManager {
       tab = tabResult.tab;
       isNewlyCreatedTab = tabResult.isNewlyCreated;
 
+      // Check tab ID is valid
+      if (tab.id === undefined) {
+        throw new Error('Tab created without ID');
+      }
+
       // Wait for page to load
-      await this.waitForTabLoad(tab.id!);
+      await this.waitForTabLoad(tab.id);
 
       // Send check request to content script
-      const response = await chrome.tabs.sendMessage(tab.id!, {
+      const response = await chrome.tabs.sendMessage(tab.id, {
         action: 'checkElement',
         selector: project.selector
       });
@@ -477,9 +484,9 @@ class MonitorManager {
         // Check if content has changed (based on last content)
         const hasChanged = currentLastContent && newContent !== currentLastContent;
 
-        if (hasChanged) {
+        if (hasChanged && currentLastContent) {
           console.log(`[${project.name}] Content changed!`);
-          this.notifyChange(updatedProject, currentLastContent!, newContent);
+          this.notifyChange(updatedProject, currentLastContent, newContent);
         } else {
           console.log(`[${project.name}] No change detected`);
         }

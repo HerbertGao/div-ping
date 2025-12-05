@@ -157,38 +157,45 @@ class ProjectManager {
     if (!targetTab) {
       targetTab = await chrome.tabs.create({ url: project.url, active: true });
       // Wait for page to load, set timeout to avoid permanent wait
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          chrome.tabs.onUpdated.removeListener(listener);
-          reject(new Error('Tab load timeout'));
-        }, 30000); // 30 second timeout
-
-        const listener = (tabId: number, info: { status?: string }) => {
-          if (tabId === targetTab!.id && info.status === 'complete') {
-            clearTimeout(timeout);
+      const createdTab = targetTab;
+      if (createdTab.id !== undefined) {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
             chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }
-        };
-        chrome.tabs.onUpdated.addListener(listener);
-      }).catch((error) => {
-        console.warn('Tab load timeout:', error);
-        // Continue even if timeout, page may be partially loaded
-      });
+            reject(new Error('Tab load timeout'));
+          }, 30000); // 30 second timeout
+
+          const listener = (tabId: number, info: { status?: string }) => {
+            if (tabId === createdTab.id && info.status === 'complete') {
+              clearTimeout(timeout);
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+        }).catch((error) => {
+          console.warn('Tab load timeout:', error);
+          // Continue even if timeout, page may be partially loaded
+        });
+      }
     } else {
       // Switch to that tab
-      await chrome.tabs.update(targetTab.id!, { active: true });
+      if (targetTab.id !== undefined) {
+        await chrome.tabs.update(targetTab.id, { active: true });
+      }
     }
 
     // Send message to content script to show edit dialog
-    chrome.tabs.sendMessage(targetTab.id!, {
-      action: 'editProject',
-      project: project
-    }, () => {
-      if (chrome.runtime.lastError) {
-        alert(t('cannotOpenEditDialog'));
-      }
-    });
+    if (targetTab.id !== undefined) {
+      chrome.tabs.sendMessage(targetTab.id, {
+        action: 'editProject',
+        project: project
+      }, () => {
+        if (chrome.runtime.lastError) {
+          alert(t('cannotOpenEditDialog'));
+        }
+      });
+    }
 
     // Close popup
     window.close();
@@ -233,7 +240,11 @@ class ProjectManager {
 
     document.body.appendChild(dialog);
 
-    const logsContent = dialog.querySelector<HTMLElement>('#logsContent')!;
+    const logsContent = dialog.querySelector<HTMLElement>('#logsContent');
+    if (!logsContent) {
+      console.error('Failed to find logs content element');
+      return;
+    }
 
     // Track number of logs displayed
     let displayedLogsCount = logs.length;
@@ -362,21 +373,30 @@ class ProjectManager {
     // Cleanup on page unload
     window.addEventListener('beforeunload', cleanupHandler);
 
-    dialog.querySelector<HTMLButtonElement>('#closeLogsBtn')!.addEventListener('click', cleanup);
+    const closeLogsBtn = dialog.querySelector<HTMLButtonElement>('#closeLogsBtn');
+    if (closeLogsBtn) {
+      closeLogsBtn.addEventListener('click', cleanup);
+    }
 
-    dialog.querySelector<HTMLButtonElement>('#clearLogsBtn')!.addEventListener('click', async () => {
-      if (confirm(t('confirmClearLogs'))) {
-        await chrome.runtime.sendMessage({ action: 'clearProjectLogs', projectId });
-        cleanup();
-      }
-    });
+    const clearLogsBtn = dialog.querySelector<HTMLButtonElement>('#clearLogsBtn');
+    if (clearLogsBtn) {
+      clearLogsBtn.addEventListener('click', async () => {
+        if (confirm(t('confirmClearLogs'))) {
+          await chrome.runtime.sendMessage({ action: 'clearProjectLogs', projectId });
+          cleanup();
+        }
+      });
+    }
 
     // Also cleanup when clicking background to close
-    dialog.querySelector<HTMLElement>('div')!.addEventListener('click', (e: Event) => {
-      if (e.target === e.currentTarget) {
-        cleanup();
-      }
-    });
+    const dialogBackground = dialog.querySelector<HTMLElement>('div');
+    if (dialogBackground) {
+      dialogBackground.addEventListener('click', (e: Event) => {
+        if (e.target === e.currentTarget) {
+          cleanup();
+        }
+      });
+    }
   }
 
   private renderLogs(logs: LogEntry[]): string {

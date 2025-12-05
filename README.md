@@ -82,7 +82,6 @@ All 74 tests passing with comprehensive coverage for SSRF validation, variable r
 
 ### Low Priority
 
-- [ ] Add JSDoc documentation - for public APIs
 - [ ] Content length limits - prevent storage exhaustion
 
 ## License
