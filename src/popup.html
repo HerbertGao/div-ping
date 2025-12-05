@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Div Ping</title>
+  <title>div-ping</title>
   <style>
     * {
       margin: 0;
@@ -178,11 +178,11 @@
   </style>
 </head>
 <body>
-  <h1>Div Ping 监控项目</h1>
+  <h1 data-i18n="appTitle">div-ping 监控项目</h1>
 
   <div class="actions">
-    <button class="btn-primary" id="selectElement">选择元素</button>
-    <button class="btn-secondary" id="openOptions">设置</button>
+    <button class="btn-primary" id="selectElement" data-i18n="selectElement">选择元素</button>
+    <button class="btn-secondary" id="openOptions" data-i18n="settings">设置</button>
   </div>
 
   <div class="projects-list" id="projectsList">
@@ -192,8 +192,8 @@
         <line x1="12" y1="8" x2="12" y2="12"></line>
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
       </svg>
-      <p>暂无监控项目</p>
-      <p style="font-size: 12px; margin-top: 8px;">点击"选择元素"开始</p>
+      <p data-i18n="noProjects">暂无监控项目</p>
+      <p style="font-size: 12px; margin-top: 8px;" data-i18n="clickToStart">点击"选择元素"开始</p>
     </div>
   </div>
 

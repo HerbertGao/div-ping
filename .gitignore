@@ -24,6 +24,9 @@ build/
 # Node modules (if any)
 node_modules/
 
+# Test coverage
+coverage/
+
 # Temporary files
 tmp/
 temp/

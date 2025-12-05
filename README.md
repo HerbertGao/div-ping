@@ -1,82 +1,76 @@
-# Div Ping
+# div-ping
 
-监控网页中指定DOM元素的变化，通过浏览器通知或Webhook发送提醒。
+![CI](https://github.com/HerbertGao/div-ping/workflows/CI/badge.svg)
 
-## 功能特点
+Monitor changes to specific DOM elements on web pages, with notifications via browser alerts or webhooks.
 
-- 可视化元素选择（鼠标悬停高亮）
-- 多项目管理
-- 后台定期检测
-- 浏览器通知 + Webhook通知
-- 完整日志记录
-- 数据导入导出
+## Features
 
-## 安装
+- Visual element selection (hover to highlight)
+- Multi-project management
+- Background periodic monitoring
+- Browser notifications + Webhook notifications
+- Complete logging system
+- Data import/export
 
-1. 打开Chrome浏览器，访问 `chrome://extensions/`
-2. 开启"开发者模式"
-3. 点击"加载已解压的扩展程序"
-4. 选择 `div-ping` 文件夹
+## Installation
 
-## 使用
+1. Open Chrome browser and navigate to `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked extension"
+4. Select the `div-ping` folder
 
-1. 打开要监控的网页
-2. 点击扩展图标
-3. 点击"选择元素"
-4. 选中要监控的元素
-5. 配置监控参数并保存
+## Usage
 
-## Webhook配置
+1. Open the web page you want to monitor
+2. Click the extension icon
+3. Click "Select Element"
+4. Select the element to monitor
+5. Configure monitoring parameters and save
 
-支持的变量: `{{projectName}}`, `{{url}}`, `{{selector}}`, `{{oldContent}}`, `{{newContent}}`, `{{timestamp}}`
+## Webhook Configuration
 
-### 示例
+Supported variables: `{{projectName}}`, `{{url}}`, `{{selector}}`, `{{oldContent}}`, `{{newContent}}`, `{{timestamp}}`
 
-**GET请求:**
+### Examples
+
+**GET Request:**
 
 ```text
 https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 ```
 
-**POST请求:**
+**POST Request:**
 
 ```json
 {
-  "text": "{{projectName}} 检测到变化: {{newContent}}"
+  "text": "{{projectName}} change detected: {{newContent}}"
 }
 ```
 
-## 常见问题
+### Important Notes
 
-**保存项目失败?** 在 `chrome://extensions/` 重新加载扩展
+- ⚠️ Variables in JSON templates should **not** be quoted: `{"msg": {{content}}}` ✓  `{"msg": "{{content}}"}`  ✗
+- ⚠️ Minimum monitoring interval: 60 seconds (Chrome Alarms API limitation)
+- ✅ Built-in security: SSRF protection, redirect blocking, header injection prevention
 
-**监控不工作?** 检查刷新间隔和CSS选择器是否正确
+## FAQ
 
-**调试方法:** `chrome://extensions/` → Service Worker 查看日志
+**Project save failed?** Reload the extension at `chrome://extensions/`
 
-## 开发待办
+**Monitoring not working?** Check refresh interval and CSS selector validity
 
-### 高优先级
+**Debugging:** `chrome://extensions/` → Service Worker to view logs
 
-- [ ] 迁移到TypeScript - 增强类型安全和开发体验
-- [ ] 将setInterval改为chrome.alarms API - Service Worker可能被终止导致定时器丢失
-- [ ] 修复storage竞态条件 - 多个监控同时读写可能导致数据丢失
-- [ ] 优化标签页创建策略 - 每次检测都创建新标签页消耗大量资源
+## Testing
 
-### 中优先级
+```bash
+npm test                 # Run tests
+npm run test:coverage    # Generate coverage report
+```
 
-- [ ] 改为动态权限请求 - 当前`<all_urls>`权限过大
-- [ ] 程序化注入content script - 避免在所有页面加载脚本
-- [ ] 添加Webhook速率限制 - 防止频繁触发
-- [ ] 实现输入验证 - 项目名称、选择器、间隔等
-- [ ] 添加错误重试机制 - 网络失败时自动重试
+All 182 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, i18n, race conditions, tab cache, webhook rate limiting, and edge cases.
 
-### 低优先级
-
-- [ ] 提取魔法数字为常量
-- [ ] 添加JSDoc文档注释
-- [ ] 支持国际化(i18n)
-
-## 许可证
+## License
 
 MIT License

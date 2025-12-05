@@ -1,0 +1,43 @@
+{
+  "name": "div-ping",
+  "version": "1.0.0",
+  "description": "Monitor changes in specified DOM elements on web pages and send alerts via browser notifications or webhooks.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "NODE_ENV=production webpack --mode production",
+    "dev": "webpack --mode development --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/ts/**/*.ts",
+    "lint:fix": "eslint src/ts/**/*.ts --fix",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@types/chrome": "^0.1.32",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.1",
+    "@types/webpack": "^5.28.5",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "copy-webpack-plugin": "^13.0.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-local-rules": "^3.0.2",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "webpack": "^5.103.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "ipaddr.js": "^2.3.0"
+  }
+}

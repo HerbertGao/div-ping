@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Div Ping - 设置</title>
+  <title>div-ping - 设置</title>
   <style>
     * {
       margin: 0;
@@ -225,56 +225,56 @@
 </head>
 <body>
   <div class="container">
-    <h1>Div Ping 设置</h1>
-    <p class="subtitle">配置扩展的默认行为和通知选项</p>
+    <h1 data-i18n="settingsTitle">div-ping 设置</h1>
+    <p class="subtitle" data-i18n="settingsSubtitle">配置扩展的默认行为和通知选项</p>
 
     <div class="status-message" id="statusMessage"></div>
 
     <div class="section">
-      <h2 class="section-title">统计信息</h2>
+      <h2 class="section-title" data-i18n="statistics">统计信息</h2>
       <div class="stats">
         <div class="stat-card">
-          <div class="stat-label">监控项目总数</div>
+          <div class="stat-label" data-i18n="totalProjects">监控项目总数</div>
           <div class="stat-value" id="totalProjects">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">活动监控</div>
+          <div class="stat-label" data-i18n="activeProjects">活动监控</div>
           <div class="stat-value" id="activeProjects">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">已暂停</div>
+          <div class="stat-label" data-i18n="pausedProjects">已暂停</div>
           <div class="stat-value" id="pausedProjects">0</div>
         </div>
       </div>
     </div>
 
     <div class="section">
-      <h2 class="section-title">默认设置</h2>
+      <h2 class="section-title" data-i18n="defaultSettings">默认设置</h2>
 
       <div class="form-group">
-        <label for="defaultInterval">默认刷新间隔(秒)</label>
+        <label for="defaultInterval" data-i18n="defaultInterval">默认刷新间隔(秒)</label>
         <input type="number" id="defaultInterval" min="5" max="3600" value="30">
-        <div class="help-text">新建监控项目时的默认刷新间隔</div>
+        <div class="help-text" data-i18n="defaultIntervalHelp">新建监控项目时的默认刷新间隔</div>
       </div>
 
       <div class="checkbox-group">
         <input type="checkbox" id="defaultBrowserNotification" checked>
-        <label for="defaultBrowserNotification">默认启用浏览器通知</label>
+        <label for="defaultBrowserNotification" data-i18n="defaultBrowserNotification">默认启用浏览器通知</label>
       </div>
 
       <div class="checkbox-group">
         <input type="checkbox" id="defaultWebhook">
-        <label for="defaultWebhook">默认启用Webhook通知</label>
+        <label for="defaultWebhook" data-i18n="defaultWebhook">默认启用Webhook通知</label>
       </div>
     </div>
 
     <div class="section">
-      <h2 class="section-title">Webhook配置</h2>
+      <h2 class="section-title" data-i18n="webhookConfig">Webhook配置</h2>
 
       <div class="info-box">
-        <h3>支持的变量</h3>
-        <p>在Webhook URL、请求头和请求体中可以使用以下变量:</p>
-        <pre style="background: white; padding: 8px; margin-top: 8px; border-radius: 4px; font-size: 12px; overflow-x: auto;">{{projectId}}      - 项目ID
+        <h3 data-i18n="supportedVariables">支持的变量</h3>
+        <p data-i18n="variablesDescription">在Webhook URL、请求头和请求体中可以使用以下变量:</p>
+        <pre style="background: white; padding: 8px; margin-top: 8px; border-radius: 4px; font-size: 12px; overflow-x: auto;" id="variablesList">{{projectId}}      - 项目ID
 {{projectName}}    - 项目名称
 {{url}}            - 页面URL
 {{selector}}       - CSS选择器
@@ -284,17 +284,17 @@
       </div>
 
       <div class="info-box" style="margin-top: 16px;">
-        <h3>示例配置</h3>
-        <p><strong>GET请求示例:</strong></p>
+        <h3 data-i18n="exampleConfig">示例配置</h3>
+        <p><strong data-i18n="getRequestExample">GET请求示例:</strong></p>
         <pre style="background: white; padding: 8px; margin-top: 4px; border-radius: 4px; font-size: 11px; overflow-x: auto;">URL: https://api.example.com/notify?project={{projectName}}&old={{oldContent}}&new={{newContent}}</pre>
 
-        <p style="margin-top: 12px;"><strong>POST请求示例:</strong></p>
+        <p style="margin-top: 12px;"><strong data-i18n="postRequestExample">POST请求示例:</strong></p>
         <pre style="background: white; padding: 8px; margin-top: 4px; border-radius: 4px; font-size: 11px; overflow-x: auto;">URL: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 Body: {
   "text": "{{projectName}} 检测到变化: {{newContent}}"
 }</pre>
 
-        <p style="margin-top: 12px;"><strong>自定义请求头示例:</strong></p>
+        <p style="margin-top: 12px;"><strong data-i18n="customHeadersExample">自定义请求头示例:</strong></p>
         <pre style="background: white; padding: 8px; margin-top: 4px; border-radius: 4px; font-size: 11px; overflow-x: auto;">Headers: {
   "Authorization": "Bearer YOUR_TOKEN",
   "X-Project": "{{projectName}}"
@@ -302,50 +302,50 @@ Body: {
       </div>
 
       <div class="form-group">
-        <label for="defaultWebhookUrl">默认Webhook URL</label>
-        <input type="url" id="defaultWebhookUrl" placeholder="https://example.com/webhook">
-        <div class="help-text">新建监控项目时的默认Webhook URL</div>
+        <label for="defaultWebhookUrl" data-i18n="defaultWebhookUrl">默认Webhook URL</label>
+        <input type="url" id="defaultWebhookUrl" data-i18n-placeholder="webhookUrlPlaceholder" placeholder="https://example.com/webhook">
+        <div class="help-text" data-i18n="defaultWebhookUrlHelp">新建监控项目时的默认Webhook URL</div>
       </div>
 
       <div class="form-group">
-        <label for="webhookTimeout">Webhook请求超时(秒)</label>
+        <label for="webhookTimeout" data-i18n="webhookTimeout">Webhook请求超时(秒)</label>
         <input type="number" id="webhookTimeout" min="5" max="60" value="10">
       </div>
     </div>
 
     <div class="section">
-      <h2 class="section-title">高级选项</h2>
+      <h2 class="section-title" data-i18n="advancedOptions">高级选项</h2>
 
       <div class="checkbox-group">
         <input type="checkbox" id="autoReload" checked>
-        <label for="autoReload">自动重新加载页面(当URL改变时)</label>
+        <label for="autoReload" data-i18n="autoReload">自动重新加载页面(当URL改变时)</label>
       </div>
 
       <div class="checkbox-group">
         <input type="checkbox" id="soundNotification">
-        <label for="soundNotification">播放通知声音</label>
+        <label for="soundNotification" data-i18n="soundNotification">播放通知声音</label>
       </div>
 
       <div class="form-group">
-        <label for="maxRetries">最大重试次数(检查失败时)</label>
+        <label for="maxRetries" data-i18n="maxRetries">最大重试次数(检查失败时)</label>
         <input type="number" id="maxRetries" min="0" max="10" value="3">
       </div>
     </div>
 
     <div class="section">
-      <h2 class="section-title">数据管理</h2>
+      <h2 class="section-title" data-i18n="dataManagement">数据管理</h2>
 
       <div class="form-group">
-        <button class="btn-secondary" id="exportData">导出配置</button>
-        <button class="btn-secondary" id="importData" style="margin-left: 8px;">导入配置</button>
-        <button class="btn-danger" id="clearData" style="margin-left: 8px;">清除所有数据</button>
+        <button class="btn-secondary" id="exportData" data-i18n="exportData">导出配置</button>
+        <button class="btn-secondary" id="importData" style="margin-left: 8px;" data-i18n="importData">导入配置</button>
+        <button class="btn-danger" id="clearData" style="margin-left: 8px;" data-i18n="clearData">清除所有数据</button>
         <input type="file" id="importFile" accept=".json" style="display: none;">
       </div>
     </div>
 
     <div class="buttons">
-      <button class="btn-primary" id="saveBtn">保存设置</button>
-      <button class="btn-secondary" id="resetBtn">恢复默认</button>
+      <button class="btn-primary" id="saveBtn" data-i18n="saveSettings">保存设置</button>
+      <button class="btn-secondary" id="resetBtn" data-i18n="resetDefault">恢复默认</button>
     </div>
   </div>
 

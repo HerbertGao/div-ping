@@ -1,0 +1,637 @@
+{
+  "extName": {
+    "message": "div-ping",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "监控页面中指定DIV元素的变化，支持浏览器通知和Webhook通知",
+    "description": "扩展描述"
+  },
+
+  "appTitle": {
+    "message": "div-ping 监控项目"
+  },
+  "selectElement": {
+    "message": "选择元素"
+  },
+  "settings": {
+    "message": "设置"
+  },
+  "noProjects": {
+    "message": "暂无监控项目"
+  },
+  "clickToStart": {
+    "message": "点击\"选择元素\"开始"
+  },
+  "running": {
+    "message": "运行中"
+  },
+  "paused": {
+    "message": "已暂停"
+  },
+  "page": {
+    "message": "页面"
+  },
+  "selector": {
+    "message": "选择器"
+  },
+  "refreshInterval": {
+    "message": "刷新间隔"
+  },
+  "seconds": {
+    "message": "秒"
+  },
+  "notificationMethod": {
+    "message": "通知方式"
+  },
+  "none": {
+    "message": "无"
+  },
+  "pause": {
+    "message": "暂停"
+  },
+  "start": {
+    "message": "启动"
+  },
+  "edit": {
+    "message": "编辑"
+  },
+  "logs": {
+    "message": "日志"
+  },
+  "delete": {
+    "message": "删除"
+  },
+  "confirmDelete": {
+    "message": "确定要删除这个监控项目吗?"
+  },
+  "browserNotification": {
+    "message": "浏览器通知"
+  },
+
+  "settingsTitle": {
+    "message": "div-ping 设置"
+  },
+  "settingsSubtitle": {
+    "message": "配置扩展的默认行为和通知选项"
+  },
+  "statistics": {
+    "message": "统计信息"
+  },
+  "totalProjects": {
+    "message": "监控项目总数"
+  },
+  "activeProjects": {
+    "message": "活动监控"
+  },
+  "pausedProjects": {
+    "message": "已暂停"
+  },
+  "defaultSettings": {
+    "message": "默认设置"
+  },
+  "defaultInterval": {
+    "message": "默认刷新间隔(秒)"
+  },
+  "defaultIntervalHelp": {
+    "message": "新建监控项目时的默认刷新间隔"
+  },
+  "defaultBrowserNotification": {
+    "message": "默认启用浏览器通知"
+  },
+  "defaultWebhook": {
+    "message": "默认启用Webhook通知"
+  },
+  "webhookConfig": {
+    "message": "Webhook配置"
+  },
+  "supportedVariables": {
+    "message": "支持的变量"
+  },
+  "variablesDescription": {
+    "message": "在Webhook URL、请求头和请求体中可以使用以下变量:"
+  },
+  "variablesProjectId": {
+    "message": "项目ID"
+  },
+  "variablesProjectName": {
+    "message": "项目名称"
+  },
+  "variablesUrl": {
+    "message": "页面URL"
+  },
+  "variablesSelector": {
+    "message": "CSS选择器"
+  },
+  "variablesOldContent": {
+    "message": "旧内容"
+  },
+  "variablesNewContent": {
+    "message": "新内容"
+  },
+  "variablesTimestamp": {
+    "message": "ISO时间戳"
+  },
+  "exampleConfig": {
+    "message": "示例配置"
+  },
+  "getRequestExample": {
+    "message": "GET请求示例:"
+  },
+  "postRequestExample": {
+    "message": "POST请求示例:"
+  },
+  "customHeadersExample": {
+    "message": "自定义请求头示例:"
+  },
+  "defaultWebhookUrl": {
+    "message": "默认Webhook URL"
+  },
+  "defaultWebhookUrlHelp": {
+    "message": "新建监控项目时的默认Webhook URL"
+  },
+  "webhookTimeout": {
+    "message": "Webhook请求超时(秒)"
+  },
+  "advancedOptions": {
+    "message": "高级选项"
+  },
+  "autoReload": {
+    "message": "自动重新加载页面(当URL改变时)"
+  },
+  "soundNotification": {
+    "message": "播放通知声音"
+  },
+  "maxRetries": {
+    "message": "最大重试次数(检查失败时)"
+  },
+  "dataManagement": {
+    "message": "数据管理"
+  },
+  "exportData": {
+    "message": "导出配置"
+  },
+  "importData": {
+    "message": "导入配置"
+  },
+  "clearData": {
+    "message": "清除所有数据"
+  },
+  "saveSettings": {
+    "message": "保存设置"
+  },
+  "resetDefault": {
+    "message": "恢复默认"
+  },
+  "settingsSaved": {
+    "message": "设置已保存"
+  },
+  "settingsReset": {
+    "message": "设置已恢复默认值"
+  },
+  "dataClearedConfirm": {
+    "message": "确定要清除所有数据吗？此操作不可恢复！"
+  },
+  "dataCleared": {
+    "message": "所有数据已清除"
+  },
+  "dataExported": {
+    "message": "配置已导出"
+  },
+  "dataImported": {
+    "message": "配置已导入"
+  },
+  "invalidFile": {
+    "message": "无效的配置文件"
+  },
+
+  "projectConfig": {
+    "message": "监控项目配置"
+  },
+  "projectName": {
+    "message": "项目名称"
+  },
+  "projectNamePlaceholder": {
+    "message": "例如: 首页新闻"
+  },
+  "selectedElement": {
+    "message": "选中元素"
+  },
+  "currentContent": {
+    "message": "当前内容"
+  },
+  "intervalSeconds": {
+    "message": "刷新间隔(秒)"
+  },
+  "minInterval": {
+    "message": "最小60秒"
+  },
+  "notificationSettings": {
+    "message": "通知设置"
+  },
+  "webhookMethod": {
+    "message": "Webhook方法"
+  },
+  "webhookUrl": {
+    "message": "Webhook URL"
+  },
+  "webhookUrlPlaceholder": {
+    "message": "https://example.com/webhook"
+  },
+  "webhookHeaders": {
+    "message": "请求头(JSON格式,可选)"
+  },
+  "webhookHeadersPlaceholder": {
+    "message": "{\"Authorization\": \"Bearer token\"}"
+  },
+  "webhookBody": {
+    "message": "请求体(POST/PUT用,可选)"
+  },
+  "webhookBodyPlaceholder": {
+    "message": "{\"text\": \"{{projectName}} 检测到变化\"}"
+  },
+  "save": {
+    "message": "保存"
+  },
+  "cancel": {
+    "message": "取消"
+  },
+  "projectNameRequired": {
+    "message": "请输入项目名称"
+  },
+  "intervalInvalid": {
+    "message": "刷新间隔必须大于等于60秒"
+  },
+  "webhookUrlRequired": {
+    "message": "请输入Webhook URL"
+  },
+  "webhookHeadersInvalid": {
+    "message": "请求头格式错误，必须是有效的JSON"
+  },
+  "webhookBodyInvalid": {
+    "message": "请求体格式错误，必须是有效的JSON"
+  },
+  "projectSaved": {
+    "message": "项目已保存"
+  },
+  "projectSaveFailed": {
+    "message": "项目保存失败"
+  },
+
+  "logsTitle": {
+    "message": "监控日志"
+  },
+  "clearLogs": {
+    "message": "清空"
+  },
+  "close": {
+    "message": "关闭"
+  },
+  "noLogs": {
+    "message": "暂无日志"
+  },
+  "changeDetected": {
+    "message": "检测到变化"
+  },
+  "noChange": {
+    "message": "无变化"
+  },
+  "checkFailed": {
+    "message": "失败"
+  },
+  "oldContent": {
+    "message": "旧内容"
+  },
+  "newContent": {
+    "message": "新内容"
+  },
+  "content": {
+    "message": "内容"
+  },
+  "error": {
+    "message": "错误"
+  },
+  "expand": {
+    "message": "展开"
+  },
+  "collapse": {
+    "message": "收起"
+  },
+  "confirmClearLogs": {
+    "message": "确定要清空所有日志吗?"
+  },
+
+  "cannotStartSelection": {
+    "message": "无法在当前页面启动元素选择。请刷新页面后重试。"
+  },
+  "cannotOpenEditDialog": {
+    "message": "无法在当前页面打开编辑对话框。请确保页面已加载完成。"
+  },
+  "getLogsFailed": {
+    "message": "获取日志失败"
+  },
+
+  "changeNotificationTitle": {
+    "message": "$projectName$ 检测到变化",
+    "placeholders": {
+      "projectName": {
+        "content": "$1",
+        "example": "首页新闻"
+      }
+    }
+  },
+  "changeNotificationMessage": {
+    "message": "新内容: $newContent$",
+    "placeholders": {
+      "newContent": {
+        "content": "$1",
+        "example": "最新新闻标题"
+      }
+    }
+  },
+
+  "enableBrowserNotification": {
+    "message": "启用浏览器通知"
+  },
+  "test": {
+    "message": "测试"
+  },
+  "enableWebhook": {
+    "message": "启用Webhook通知"
+  },
+  "sending": {
+    "message": "发送中..."
+  },
+  "minIntervalWarning": {
+    "message": "⚠️ 最小间隔为$seconds$秒 (Chrome扩展Alarms API限制)",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "60"
+      }
+    }
+  },
+  "communicationFailed": {
+    "message": "❌ 通信失败\n\n错误: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Connection refused"
+      }
+    }
+  },
+  "notificationTestFailed": {
+    "message": "❌ 测试通知发送失败\n\n$error$\n\n请检查浏览器通知权限设置",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Permission denied"
+      }
+    }
+  },
+  "webhookUrlEmpty": {
+    "message": "请先填写Webhook URL"
+  },
+  "webhookHeadersError": {
+    "message": "请求头JSON格式错误: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Unexpected token"
+      }
+    }
+  },
+  "webhookBodyError": {
+    "message": "请求体JSON格式错误: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Unexpected token"
+      }
+    }
+  },
+  "webhookTestSuccess": {
+    "message": "✓ 测试成功！\n\n状态码: $status$ $statusText$\n\nWebhook服务器已成功接收请求",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "200"
+      },
+      "statusText": {
+        "content": "$2",
+        "example": "OK"
+      }
+    }
+  },
+  "webhookTestWarning": {
+    "message": "⚠ Webhook请求已发送，但返回非成功状态\n\n状态码: $status$ $statusText$\n\n可能原因:\n- 请求数据格式不符合服务器要求\n- 认证信息错误\n- 服务器配置问题\n\n请检查Webhook服务端日志获取详细信息",
+    "placeholders": {
+      "status": {
+        "content": "$1",
+        "example": "400"
+      },
+      "statusText": {
+        "content": "$2",
+        "example": "Bad Request"
+      }
+    }
+  },
+  "webhookTestFailed": {
+    "message": "❌ 测试失败\n\n错误: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Network error"
+      }
+    }
+  },
+  "intervalTooSmall": {
+    "message": "⚠️ 刷新间隔不能小于$minSeconds$秒\n\nChrome扩展的Alarms API要求最小间隔为1分钟（$minSeconds$秒）。\n\n如果您需要更频繁的监控，请考虑使用其他监控方案。",
+    "placeholders": {
+      "minSeconds": {
+        "content": "$1",
+        "example": "60"
+      }
+    }
+  },
+  "saveFailed": {
+    "message": "保存失败: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "Storage error"
+      }
+    }
+  },
+  "projectUpdated": {
+    "message": "✓ 监控项目已更新!"
+  },
+  "projectCreated": {
+    "message": "✓ 监控项目已创建!"
+  },
+  "monitorPrefix": {
+    "message": "监控-"
+  },
+  "webhookVariablesHelp": {
+    "message": "支持变量: {{projectName}}, {{url}}, {{selector}}, {{oldContent}}, {{newContent}}, {{timestamp}}"
+  },
+  "webhookBodyHelp": {
+    "message": "留空则使用默认格式"
+  },
+  "currentContentPreview": {
+    "message": "当前内容预览:"
+  },
+  "unknownError": {
+    "message": "未知错误"
+  },
+  "testNotificationTitle": {
+    "message": "div-ping - 测试通知"
+  },
+  "testNotificationMessage": {
+    "message": "这是一条测试通知\n\n如果你看到这条消息，说明浏览器通知配置正常！"
+  },
+  "changeNotificationTitleShort": {
+    "message": "div-ping - 元素变化检测"
+  },
+  "changeNotificationBody": {
+    "message": "元素内容已变化!\n\n项目: $projectName$\n页面: $url$",
+    "placeholders": {
+      "projectName": {
+        "content": "$1",
+        "example": "首页新闻"
+      },
+      "url": {
+        "content": "$2",
+        "example": "https://example.com"
+      }
+    }
+  },
+  "ssrfHttpOnly": {
+    "message": "只支持 HTTP 和 HTTPS 协议"
+  },
+  "ssrfHttpWarning": {
+    "message": "警告: Webhook使用HTTP协议，建议使用HTTPS"
+  },
+  "ssrfLocalhostBlocked": {
+    "message": "禁止访问本地地址"
+  },
+  "ssrfInternalDomainBlocked": {
+    "message": "禁止访问内网域名"
+  },
+  "ssrfIpRangeBlocked": {
+    "message": "禁止访问$range$类型的IP地址",
+    "placeholders": {
+      "range": {
+        "content": "$1",
+        "example": "private"
+      }
+    }
+  },
+  "ssrfIetfAddressBlocked": {
+    "message": "禁止访问IETF协议分配地址段"
+  },
+  "ssrfTestNetworkBlocked": {
+    "message": "禁止访问测试网络地址"
+  },
+  "ssrfBenchmarkBlocked": {
+    "message": "禁止访问基准测试地址段"
+  },
+  "ssrfIpv4MappedBlocked": {
+    "message": "禁止使用映射到$range$类型的IPv4地址",
+    "placeholders": {
+      "range": {
+        "content": "$1",
+        "example": "private"
+      }
+    }
+  },
+  "invalidUrlFormat": {
+    "message": "无效的URL格式"
+  },
+  "webhookUrlValidationFailed": {
+    "message": "Webhook URL验证失败:"
+  },
+  "webhookUrlValidationFailedWithError": {
+    "message": "Webhook URL验证失败: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "禁止访问本地地址"
+      }
+    }
+  },
+  "webhookUrlAfterSubstitutionFailed": {
+    "message": "替换变量后的URL验证失败:"
+  },
+  "webhookUrlAfterSubstitutionFailedWithError": {
+    "message": "替换变量后的URL验证失败: $error$",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "禁止访问本地地址"
+      }
+    }
+  },
+  "webhookBodyJsonError": {
+    "message": "Webhook body JSON格式错误或变量替换失败: "
+  },
+  "webhookBodySizeExceeded": {
+    "message": "Webhook body大小（$size$ 字节）在变量替换后超过最大限制（$maxSize$ 字节）",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "12345"
+      },
+      "maxSize": {
+        "content": "$2",
+        "example": "10000"
+      }
+    }
+  },
+  "webhookHeadersSizeExceeded": {
+    "message": "Webhook请求头大小（$size$ 字节）在变量替换后超过最大限制（$maxSize$ 字节）",
+    "placeholders": {
+      "size": {
+        "content": "$1",
+        "example": "9000"
+      },
+      "maxSize": {
+        "content": "$2",
+        "example": "8000"
+      }
+    }
+  },
+  "webhookRedirectBlocked": {
+    "message": "Webhook不允许重定向。如需访问重定向后的地址，请直接配置目标URL。$location$",
+    "placeholders": {
+      "location": {
+        "content": "$1",
+        "example": " (重定向目标: https://example.com)"
+      }
+    }
+  },
+  "redirectTarget": {
+    "message": "重定向目标"
+  },
+  "webhookTimeoutError": {
+    "message": "Webhook请求超时（$seconds$秒）",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "10"
+      }
+    }
+  },
+  "testProjectName": {
+    "message": "测试项目"
+  },
+  "testOldContent": {
+    "message": "旧内容示例"
+  },
+  "testNewContent": {
+    "message": "新内容示例"
+  },
+  "requestBodyJsonError": {
+    "message": "请求体JSON格式错误或变量替换失败: "
+  }
+}
