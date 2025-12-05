@@ -69,7 +69,7 @@ npm test                 # Run tests
 npm run test:coverage    # Generate coverage report
 ```
 
-All 74 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, and i18n.
+All 167 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, i18n, race conditions, tab cache, and edge cases.
 
 ## Development TODO
 
@@ -78,11 +78,6 @@ All 74 tests passing with comprehensive coverage for SSRF validation, variable r
 - [ ] Dynamic permission requests - current `<all_urls>` permission is too broad
 - [ ] Programmatic content script injection - avoid loading scripts on all pages
 - [ ] Webhook rate limiting - prevent frequent triggering
-- [ ] Error retry mechanism - automatic retry on network failures
-
-### Low Priority
-
-- [ ] Content length limits - prevent storage exhaustion
 
 ## License
 

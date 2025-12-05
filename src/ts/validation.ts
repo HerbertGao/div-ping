@@ -249,7 +249,7 @@ export function validateWebhookHeaders(headers: string | Record<string, string>)
  *
  * @remarks
  * Validation rules:
- * - Total serialized size cannot exceed 512KB (see LIMITS.MAX_WEBHOOK_BODY_SIZE)
+ * - Total serialized size cannot exceed 10KB (see LIMITS.MAX_WEBHOOK_BODY_SIZE)
  * - Size is calculated in bytes using UTF-8 encoding (via Blob API)
  * - Objects are automatically JSON-stringified for size calculation
  *
@@ -263,9 +263,9 @@ export function validateWebhookHeaders(headers: string | Record<string, string>)
  * validateWebhookBody('Small text content');                   // { valid: true }
  *
  * // Invalid body:
- * const largeBody = 'x'.repeat(600 * 1024); // 600KB
+ * const largeBody = 'x'.repeat(15000); // ~15KB
  * validateWebhookBody(largeBody);
- * // { valid: false, error: 'Webhook body size (614400 bytes) exceeds maximum 524288 bytes' }
+ * // { valid: false, error: 'Webhook body size (15000 bytes) exceeds maximum 10000 bytes' }
  * ```
  */
 export function validateWebhookBody(body: string | Record<string, unknown>): ValidationResult {
