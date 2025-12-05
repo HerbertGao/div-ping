@@ -155,7 +155,7 @@ class MonitorManager {
             break;
           }
 
-          // Validate inputs
+          // Validate all inputs before creating project (fail fast)
           const projectName = message.name || `${t('monitorPrefix')}${new Date().toLocaleString()}`;
           const nameValidation = validateProjectName(projectName);
           if (!nameValidation.valid) {
