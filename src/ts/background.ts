@@ -314,6 +314,43 @@ class MonitorManager {
             break;
           }
 
+          // Validate inputs before updating
+          const nameValidation = validateProjectName(message.name);
+          if (!nameValidation.valid) {
+            sendResponse({ success: false, error: nameValidation.error });
+            break;
+          }
+
+          const selectorValidation = validateSelector(message.selector);
+          if (!selectorValidation.valid) {
+            sendResponse({ success: false, error: selectorValidation.error });
+            break;
+          }
+
+          const intervalValidation = validateInterval(message.interval);
+          if (!intervalValidation.valid) {
+            sendResponse({ success: false, error: intervalValidation.error });
+            break;
+          }
+
+          // Validate webhook configuration if present
+          if (message.webhook?.enabled) {
+            if (message.webhook.body) {
+              const bodyValidation = validateWebhookBody(message.webhook.body);
+              if (!bodyValidation.valid) {
+                sendResponse({ success: false, error: bodyValidation.error });
+                break;
+              }
+            }
+            if (message.webhook.headers) {
+              const headersValidation = validateWebhookHeaders(message.webhook.headers);
+              if (!headersValidation.valid) {
+                sendResponse({ success: false, error: headersValidation.error });
+                break;
+              }
+            }
+          }
+
           // Use storageManager for atomic update
           const updatedProject = await storageManager.updateProject(message.projectId, {
             name: message.name,
