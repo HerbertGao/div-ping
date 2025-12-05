@@ -200,6 +200,13 @@ class MonitorManager {
             }
           }
 
+          // Request host permission (requires user gesture, available during project creation)
+          const permissionGranted = await this.requestHostPermission(message.url);
+          if (!permissionGranted) {
+            sendResponse({ success: false, error: 'Host permission denied for: ' + message.url });
+            break;
+          }
+
           const project: Project = {
             id: Date.now().toString(),
             name: projectName,
@@ -387,6 +394,7 @@ class MonitorManager {
 
   /**
    * Request host permission for a specific URL
+   * This must be called with user gesture context (e.g., during project creation)
    * @param url - The URL to request permission for
    * @returns Promise<boolean> - Whether permission was granted
    */
@@ -406,7 +414,7 @@ class MonitorManager {
         return true;
       }
 
-      // Request permission
+      // Request permission (requires user gesture)
       console.log(`Requesting permission for: ${origin}`);
       const granted = await chrome.permissions.request({
         origins: [origin]
@@ -421,6 +429,28 @@ class MonitorManager {
       return granted;
     } catch (error) {
       console.error('Error requesting host permission:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if host permission exists for a specific URL
+   * Does not request permission (can be called without user gesture)
+   * @param url - The URL to check permission for
+   * @returns Promise<boolean> - Whether permission exists
+   */
+  private async hasHostPermission(url: string): Promise<boolean> {
+    try {
+      const urlObj = new URL(url);
+      const origin = `${urlObj.protocol}//${urlObj.host}/*`;
+
+      const hasPermission = await chrome.permissions.contains({
+        origins: [origin]
+      });
+
+      return hasPermission;
+    } catch (error) {
+      console.error('Error checking host permission:', error);
       return false;
     }
   }
@@ -510,8 +540,8 @@ class MonitorManager {
     try {
       console.log(`[${project.name}] Getting or creating tab for URL: ${project.url}`);
 
-      // Request host permission for the URL
-      const hasPermission = await this.requestHostPermission(project.url);
+      // Check if host permission exists (without requesting, as we may not have user gesture)
+      const hasPermission = await this.hasHostPermission(project.url);
       if (!hasPermission) {
         throw new Error('Host permission not granted for: ' + project.url);
       }
