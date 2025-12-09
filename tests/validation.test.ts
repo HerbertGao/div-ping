@@ -151,6 +151,13 @@ describe('Validation Module', () => {
       expect(validateLoadDelay(LIMITS.MAX_LOAD_DELAY_MS)).toEqual({ valid: true });
     });
 
+    it('should accept fractional delays (half-second precision)', () => {
+      expect(validateLoadDelay(500)).toEqual({ valid: true });   // 0.5 seconds
+      expect(validateLoadDelay(1500)).toEqual({ valid: true });  // 1.5 seconds
+      expect(validateLoadDelay(2500)).toEqual({ valid: true });  // 2.5 seconds
+      expect(validateLoadDelay(59500)).toEqual({ valid: true }); // 59.5 seconds
+    });
+
     it('should reject non-numeric delays', () => {
       const result = validateLoadDelay(NaN);
       expect(result.valid).toBe(false);
