@@ -58,7 +58,7 @@ export const DEFAULTS = {
   /** Default load delay in milliseconds (no delay) */
   LOAD_DELAY_MS: 0,
   /** Load delay input step size in seconds (allows half-second precision for fine-tuning) */
-  LOAD_DELAY_STEP: 0.5,
+  LOAD_DELAY_INPUT_STEP_SECONDS: 0.5,
 } as const;
 
 /**

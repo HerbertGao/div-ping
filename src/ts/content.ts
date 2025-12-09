@@ -195,7 +195,7 @@ class ElementSelector {
 
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('loadDelaySeconds')}:</label>
-          <input type="number" id="loadDelay" value="${existingProject && existingProject.loadDelay !== undefined ? existingProject.loadDelay / 1000 : 0}" min="0" max="${LIMITS.MAX_LOAD_DELAY_SECONDS}" step="${DEFAULTS.LOAD_DELAY_STEP}" style="
+          <input type="number" id="loadDelay" value="${existingProject && existingProject.loadDelay !== undefined ? existingProject.loadDelay / 1000 : 0}" min="0" max="${LIMITS.MAX_LOAD_DELAY_SECONDS}" step="${DEFAULTS.LOAD_DELAY_INPUT_STEP_SECONDS}" style="
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
