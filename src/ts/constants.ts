@@ -55,6 +55,8 @@ export const DEFAULTS = {
   INTERVAL_SECONDS: 60,
   /** Default monitoring interval in milliseconds */
   INTERVAL_MS: 60000,
+  /** Default load delay in milliseconds (no delay) */
+  LOAD_DELAY_MS: 0,
   /** Load delay input step size in seconds (allows half-second precision for fine-tuning) */
   LOAD_DELAY_STEP: 0.5,
 } as const;

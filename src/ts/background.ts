@@ -1,4 +1,4 @@
-import { ALARM, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } from './constants';
+import { ALARM, DEFAULTS, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } from './constants';
 import { t } from './i18n';
 import { storageManager } from './storageManager';
 import { LogEntry, MessageRequest, MessageResponse, Project, Settings, WebhookConfig } from './types';
@@ -182,8 +182,8 @@ class MonitorManager {
             break;
           }
 
-          // Validate load delay (default to 0 if not provided for backwards compatibility or direct API calls)
-          const loadDelay = message.loadDelay !== undefined ? message.loadDelay : 0;
+          // Validate load delay (default to DEFAULTS.LOAD_DELAY_MS if not provided for backwards compatibility or direct API calls)
+          const loadDelay = message.loadDelay !== undefined ? message.loadDelay : DEFAULTS.LOAD_DELAY_MS;
           const loadDelayValidation = validateLoadDelay(loadDelay);
           if (!loadDelayValidation.valid) {
             sendResponse({ success: false, error: loadDelayValidation.error });
@@ -267,8 +267,8 @@ class MonitorManager {
             break;
           }
 
-          // Validate load delay (default to 0 if not provided for backwards compatibility or direct API calls)
-          const updateLoadDelay = message.loadDelay !== undefined ? message.loadDelay : 0;
+          // Validate load delay (default to DEFAULTS.LOAD_DELAY_MS if not provided for backwards compatibility or direct API calls)
+          const updateLoadDelay = message.loadDelay !== undefined ? message.loadDelay : DEFAULTS.LOAD_DELAY_MS;
           const updateLoadDelayValidation = validateLoadDelay(updateLoadDelay);
           if (!updateLoadDelayValidation.valid) {
             sendResponse({ success: false, error: updateLoadDelayValidation.error });
@@ -578,7 +578,7 @@ class MonitorManager {
       await this.waitForTabLoad(tab.id);
 
       // Additional delay for Ajax/async content if configured
-      const loadDelay = project.loadDelay || 0;
+      const loadDelay = project.loadDelay ?? DEFAULTS.LOAD_DELAY_MS;
       if (loadDelay > 0) {
         console.log(`[${project.name}] Waiting ${loadDelay}ms for dynamic content to load...`);
         await new Promise(resolve => setTimeout(resolve, loadDelay));
