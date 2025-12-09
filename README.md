@@ -9,6 +9,7 @@ Monitor changes to specific DOM elements on web pages, with notifications via br
 - Visual element selection (hover to highlight)
 - Multi-project management
 - Background periodic monitoring
+- Configurable page load delay for Ajax/async content
 - Browser notifications + Webhook notifications
 - Complete logging system
 - Data import/export
@@ -52,6 +53,7 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 
 - ⚠️ Variables in JSON templates should **not** be quoted: `{"msg": {{content}}}` ✓  `{"msg": "{{content}}"}`  ✗
 - ⚠️ Minimum monitoring interval: 60 seconds (Chrome Alarms API limitation)
+- ⏱️ Page load delay: 0-60 seconds (for Ajax/async content, adds to total check time)
 - ✅ Built-in security: SSRF protection, redirect blocking, header injection prevention
 
 ## FAQ
@@ -59,6 +61,8 @@ https://api.example.com/notify?name={{projectName}}&content={{newContent}}
 **Project save failed?** Reload the extension at `chrome://extensions/`
 
 **Monitoring not working?** Check refresh interval and CSS selector validity
+
+**Element shows empty content?** Try adding a page load delay (0.5-5 seconds) for Ajax/async content
 
 **Debugging:** `chrome://extensions/` → Service Worker to view logs
 
@@ -69,7 +73,7 @@ npm test                 # Run tests
 npm run test:coverage    # Generate coverage report
 ```
 
-All 182 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, i18n, race conditions, tab cache, webhook rate limiting, and edge cases.
+All 219 tests passing with comprehensive coverage for SSRF validation, variable replacement, storage operations, i18n, race conditions, tab cache, webhook rate limiting, load delay validation, and edge cases.
 
 ## License
 
