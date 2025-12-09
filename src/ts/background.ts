@@ -202,7 +202,7 @@ class MonitorManager {
             sendResponse({ success: false, error: loadDelayResult.error });
             break;
           }
-          const loadDelay = loadDelayResult.value!;
+          const loadDelay = loadDelayResult.value ?? DEFAULTS.LOAD_DELAY_MS;
 
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
@@ -287,7 +287,7 @@ class MonitorManager {
             sendResponse({ success: false, error: loadDelayResult.error });
             break;
           }
-          const loadDelay = loadDelayResult.value!;
+          const loadDelay = loadDelayResult.value ?? DEFAULTS.LOAD_DELAY_MS;
 
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {

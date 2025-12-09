@@ -620,8 +620,8 @@ export function validateWebhookUrl(urlString: string): ValidationResult {
     }
 
     return { valid: true };
-  } catch (error) {
-    // new URL() throws TypeError for invalid URLs
+  } catch {
+    // New URL() throws TypeError for invalid URLs
     return {
       valid: false,
       error: 'Invalid URL format',
