@@ -116,6 +116,7 @@ class ProjectManager {
           <div>${t('page')}: ${this.escapeHtml(project.url)}</div>
           <div>${t('selector')}: ${this.escapeHtml(project.selector)}</div>
           <div>${t('refreshInterval')}: ${project.interval / 1000}${t('seconds')}</div>
+          ${project.loadDelay ? `<div>${t('loadDelaySeconds')}: ${project.loadDelay / 1000}${t('seconds')}</div>` : ''}
           <div>${t('notificationMethod')}: ${this.getNotificationMethods(project)}</div>
         </div>
         <div class="project-actions">

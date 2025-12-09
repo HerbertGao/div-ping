@@ -226,6 +226,23 @@
   "minInterval": {
     "message": "Minimum 60 seconds"
   },
+  "loadDelaySeconds": {
+    "message": "Page Load Delay (seconds)"
+  },
+  "loadDelayHint": {
+    "message": "Additional delay after page load for Ajax/async content (0-60 seconds)"
+  },
+  "loadDelayInvalid": {
+    "message": "Load delay must be a valid number greater than or equal to 0"
+  },
+  "loadDelayTooLarge": {
+    "message": "Load delay cannot exceed $1 seconds",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "notificationSettings": {
     "message": "Notification Settings"
   },

@@ -41,6 +41,10 @@ export const LIMITS = {
   MAX_INTERVAL_MS: 86400000,
   /** Maximum tab cache size (increased to support monitoring many URLs) */
   MAX_TAB_CACHE_SIZE: 200,
+  /** Maximum page load delay in milliseconds (60 seconds) */
+  MAX_LOAD_DELAY_MS: 60000,
+  /** Maximum page load delay in seconds */
+  MAX_LOAD_DELAY_SECONDS: 60,
 } as const;
 
 /**

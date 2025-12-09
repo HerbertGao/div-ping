@@ -18,6 +18,7 @@
  * @property {string} [lastChecked] - ISO timestamp of last check
  * @property {number | null} [tabId] - Chrome tab ID used for monitoring (cached for reuse)
  * @property {string} [lastWebhookTime] - ISO timestamp of last webhook call (for rate limiting)
+ * @property {number} [loadDelay] - Additional delay in milliseconds after page load before checking element (for Ajax/async content, default 0)
  */
 export interface Project {
   id: string;
@@ -32,6 +33,7 @@ export interface Project {
   lastChecked?: string;
   tabId?: number | null;
   lastWebhookTime?: string;
+  loadDelay?: number;
 }
 
 /**

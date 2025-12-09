@@ -2,7 +2,7 @@ import { ALARM, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } from './con
 import { t } from './i18n';
 import { storageManager } from './storageManager';
 import { LogEntry, MessageRequest, MessageResponse, Project, Settings, WebhookConfig } from './types';
-import { validateInterval, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
+import { validateInterval, validateLoadDelay, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
 
 // Monitor info interface (no longer needs intervalId)
 interface MonitorInfo {
@@ -182,6 +182,14 @@ class MonitorManager {
             break;
           }
 
+          // Validate load delay if present
+          const loadDelay = message.loadDelay !== undefined ? message.loadDelay : 0;
+          const loadDelayValidation = validateLoadDelay(loadDelay);
+          if (!loadDelayValidation.valid) {
+            sendResponse({ success: false, error: loadDelayValidation.error });
+            break;
+          }
+
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
             if (message.webhook.body) {
@@ -217,7 +225,8 @@ class MonitorManager {
             browserNotification: message.browserNotification !== false,
             webhook: message.webhook || { enabled: false },
             lastContent: message.initialContent,
-            tabId: sender.tab?.id || null
+            tabId: sender.tab?.id || null,
+            loadDelay: loadDelay
           };
 
           // Save to storage
@@ -258,6 +267,14 @@ class MonitorManager {
             break;
           }
 
+          // Validate load delay if present
+          const updateLoadDelay = message.loadDelay !== undefined ? message.loadDelay : 0;
+          const updateLoadDelayValidation = validateLoadDelay(updateLoadDelay);
+          if (!updateLoadDelayValidation.valid) {
+            sendResponse({ success: false, error: updateLoadDelayValidation.error });
+            break;
+          }
+
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
             if (message.webhook.body) {
@@ -283,7 +300,8 @@ class MonitorManager {
             interval: message.interval,
             browserNotification: message.browserNotification,
             webhook: message.webhook || { enabled: false },
-            lastContent: message.initialContent
+            lastContent: message.initialContent,
+            loadDelay: updateLoadDelay
           });
 
           if (!updatedProject) {
@@ -558,6 +576,13 @@ class MonitorManager {
 
       // Wait for page to load
       await this.waitForTabLoad(tab.id);
+
+      // Additional delay for Ajax/async content if configured
+      const loadDelay = project.loadDelay || 0;
+      if (loadDelay > 0) {
+        console.log(`[${project.name}] Waiting ${loadDelay}ms for dynamic content to load...`);
+        await new Promise(resolve => setTimeout(resolve, loadDelay));
+      }
 
       // Inject content script into the tab
       await this.injectContentScript(tab.id);

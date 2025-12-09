@@ -334,6 +334,58 @@ export function validateInterval(interval: number): ValidationResult {
 }
 
 /**
+ * Validates page load delay for reasonable time bounds
+ *
+ * @param delay - Page load delay in milliseconds
+ * @returns ValidationResult object with valid flag and optional error message
+ *
+ * @remarks
+ * Validation rules:
+ * - Must be a valid number (not NaN)
+ * - Minimum: 0ms (no delay)
+ * - Maximum: 60000ms (60 seconds) - see LIMITS.MAX_LOAD_DELAY_MS
+ *
+ * Rationale for limits:
+ * - Minimum allows instant checking when no delay is needed
+ * - Maximum prevents excessive waiting that could cause timeout issues
+ *
+ * @example
+ * ```typescript
+ * // Valid delays:
+ * validateLoadDelay(0);           // No delay - { valid: true }
+ * validateLoadDelay(1000);        // 1 second - { valid: true }
+ * validateLoadDelay(5000);        // 5 seconds - { valid: true }
+ * validateLoadDelay(30000);       // 30 seconds - { valid: true }
+ *
+ * // Invalid delays:
+ * validateLoadDelay(-1000);       // Negative - { valid: false, error: 'Load delay cannot be negative' }
+ * validateLoadDelay(70000);       // Too long - { valid: false, error: 'Load delay cannot exceed 60 seconds' }
+ * validateLoadDelay(NaN);         // Not a number - { valid: false, error: 'Load delay must be a valid number' }
+ * ```
+ */
+export function validateLoadDelay(delay: number): ValidationResult {
+  if (typeof delay !== 'number' || isNaN(delay)) {
+    return { valid: false, error: 'Load delay must be a valid number' };
+  }
+
+  if (delay < 0) {
+    return {
+      valid: false,
+      error: 'Load delay cannot be negative'
+    };
+  }
+
+  if (delay > LIMITS.MAX_LOAD_DELAY_MS) {
+    return {
+      valid: false,
+      error: `Load delay cannot exceed ${LIMITS.MAX_LOAD_DELAY_SECONDS} seconds`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Validates webhook URL with comprehensive SSRF (Server-Side Request Forgery) protection
  *
  * @param urlString - The webhook URL to validate

@@ -226,6 +226,23 @@
   "minInterval": {
     "message": "最小60秒"
   },
+  "loadDelaySeconds": {
+    "message": "页面加载延迟(秒)"
+  },
+  "loadDelayHint": {
+    "message": "页面加载完成后的额外等待时间，用于Ajax/异步内容加载 (0-60秒)"
+  },
+  "loadDelayInvalid": {
+    "message": "加载延迟必须是大于或等于0的有效数字"
+  },
+  "loadDelayTooLarge": {
+    "message": "加载延迟不能超过 $1 秒",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "notificationSettings": {
     "message": "通知设置"
   },

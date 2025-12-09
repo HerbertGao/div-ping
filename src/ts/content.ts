@@ -192,6 +192,18 @@ class ElementSelector {
           <div style="font-size: 12px; color: #FF9800; margin-top: 4px;">${t('minIntervalWarning', [LIMITS.MIN_INTERVAL_SECONDS.toString()])}</div>
         </div>
 
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('loadDelaySeconds')}:</label>
+          <input type="number" id="loadDelay" value="${existingProject && existingProject.loadDelay !== undefined ? existingProject.loadDelay / 1000 : 0}" min="0" max="${LIMITS.MAX_LOAD_DELAY_SECONDS}" step="0.5" style="
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+          ">
+          <div style="font-size: 12px; color: #999; margin-top: 4px;">${t('loadDelayHint')}</div>
+        </div>
+
         <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
           <label style="display: flex; align-items: center; font-size: 14px; color: #666;">
             <input type="checkbox" id="browserNotification" ${existingProject ? (existingProject.browserNotification ? 'checked' : '') : 'checked'} style="margin-right: 8px;">
@@ -462,6 +474,27 @@ class ElementSelector {
           return;
         }
 
+        // Validate load delay
+        const loadDelayInput = dialog.querySelector<HTMLInputElement>('#loadDelay');
+        if (!loadDelayInput) {
+          console.error('Failed to find load delay input');
+          return;
+        }
+
+        const loadDelayValue = parseFloat(loadDelayInput.value);
+
+        if (isNaN(loadDelayValue) || loadDelayValue < 0) {
+          alert(t('loadDelayInvalid'));
+          loadDelayInput.focus();
+          return;
+        }
+
+        if (loadDelayValue > LIMITS.MAX_LOAD_DELAY_SECONDS) {
+          alert(t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]));
+          loadDelayInput.focus();
+          return;
+        }
+
         // Get all required form fields
         const projectNameInput = dialog.querySelector<HTMLInputElement>('#projectName');
         const elementSelectorInput = dialog.querySelector<HTMLInputElement>('#elementSelector');
@@ -478,6 +511,7 @@ class ElementSelector {
           name: projectNameInput.value,
           selector: elementSelectorInput.value,
           interval: intervalValue * 1000,
+          loadDelay: loadDelayValue * 1000,
           browserNotification: browserNotificationCheckbox.checked,
           url: existingProject ? existingProject.url : window.location.href,
           initialContent: initialContent
@@ -561,8 +595,13 @@ class ElementSelector {
 // Initialize selector
 const selector = new ElementSelector();
 
-// Listen for messages from popup
-chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
+// Prevent multiple listener registrations when script is re-injected
+// Check if listener is already registered using a global flag
+if (!(window as any).__divPingContentScriptLoaded) {
+  (window as any).__divPingContentScriptLoaded = true;
+
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
   if (message.action === 'ping') {
     // Respond to ping to indicate content script is loaded
     sendResponse({ success: true });
@@ -607,4 +646,5 @@ chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.r
     return true; // Keep message channel open
   }
   return false;
-});
+  });
+}
