@@ -66,6 +66,14 @@ export interface ValidationResult {
 }
 
 /**
+ * Extended validation result that includes the validated/processed value
+ * Used when validation also involves processing or applying defaults
+ */
+export interface ValidationResultWithValue<T> extends ValidationResult {
+  value?: T;
+}
+
+/**
  * Validates a project name for length and character constraints
  *
  * @param name - The project name to validate

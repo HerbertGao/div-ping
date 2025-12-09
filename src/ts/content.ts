@@ -392,8 +392,19 @@ class ElementSelector {
       }
     };
 
-    // Add input event listener for real-time validation
-    loadDelayInput.addEventListener('input', validateLoadDelayInput);
+    // Add input event listener with debouncing for better UX
+    // Prevents validation errors while user is typing decimal values (e.g., "3." before completing "3.5")
+    let validationTimeout: number | undefined;
+    loadDelayInput.addEventListener('input', () => {
+      clearTimeout(validationTimeout);
+      validationTimeout = window.setTimeout(validateLoadDelayInput, 300);
+    });
+
+    // Also validate on blur for immediate feedback when leaving field
+    loadDelayInput.addEventListener('blur', () => {
+      clearTimeout(validationTimeout);
+      validateLoadDelayInput();
+    });
 
     // Test browser notification button
     testBrowserBtn.addEventListener('click', () => {

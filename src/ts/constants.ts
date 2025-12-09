@@ -57,7 +57,12 @@ export const DEFAULTS = {
   INTERVAL_MS: 60000,
   /** Default load delay in milliseconds (no delay) */
   LOAD_DELAY_MS: 0,
-  /** Load delay input step size in seconds (allows half-second precision for fine-tuning) */
+  /**
+   * Load delay input step size in seconds
+   * Set to 0.5 for half-second precision to balance between:
+   * - Fine-tuning capability for Ajax content (too coarse = missed timing windows)
+   * - Preventing users from setting overly precise values (too fine = unnecessary complexity)
+   */
   LOAD_DELAY_INPUT_STEP_SECONDS: 0.5,
 } as const;
 

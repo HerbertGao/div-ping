@@ -2,7 +2,7 @@ import { ALARM, DEFAULTS, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } f
 import { t } from './i18n';
 import { storageManager } from './storageManager';
 import { LogEntry, MessageRequest, MessageResponse, Project, Settings, WebhookConfig } from './types';
-import { validateInterval, validateLoadDelay, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
+import { validateInterval, validateLoadDelay, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl, ValidationResultWithValue } from './validation';
 
 // Monitor info interface (no longer needs intervalId)
 interface MonitorInfo {
@@ -41,11 +41,11 @@ class MonitorManager {
    * @param messageLoadDelay - Load delay from message (may be undefined)
    * @returns Validation result with validated load delay value
    */
-  private validateAndGetLoadDelay(messageLoadDelay: number | undefined): { valid: boolean; value?: number; error?: string } {
+  private validateAndGetLoadDelay(messageLoadDelay: number | undefined): ValidationResultWithValue<number> {
     const loadDelay = messageLoadDelay ?? DEFAULTS.LOAD_DELAY_MS;
     const validation = validateLoadDelay(loadDelay);
     if (!validation.valid) {
-      return { valid: false, error: validation.error };
+      return { valid: false, error: validation.error, errorCode: validation.errorCode };
     }
     return { valid: true, value: loadDelay };
   }
