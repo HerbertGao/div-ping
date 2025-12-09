@@ -1,6 +1,7 @@
 import { DEFAULTS, LIMITS } from './constants';
 import { t } from './i18n';
 import { MessageRequest, MessageResponse, Project, WebhookConfig } from './types';
+import { validateLoadDelay } from './validation';
 
 // Element selection mode
 class ElementSelector {
@@ -194,7 +195,7 @@ class ElementSelector {
 
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('loadDelaySeconds')}:</label>
-          <input type="number" id="loadDelay" value="${existingProject && existingProject.loadDelay !== undefined ? existingProject.loadDelay / 1000 : 0}" min="0" max="${LIMITS.MAX_LOAD_DELAY_SECONDS}" step="0.5" style="
+          <input type="number" id="loadDelay" value="${existingProject && existingProject.loadDelay !== undefined ? existingProject.loadDelay / 1000 : 0}" min="0" max="${LIMITS.MAX_LOAD_DELAY_SECONDS}" step="${DEFAULTS.LOAD_DELAY_STEP}" style="
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -482,15 +483,12 @@ class ElementSelector {
         }
 
         const loadDelayValue = parseFloat(loadDelayInput.value);
+        const loadDelayMs = loadDelayValue * 1000;
 
-        if (isNaN(loadDelayValue) || loadDelayValue < 0) {
-          alert(t('loadDelayInvalid'));
-          loadDelayInput.focus();
-          return;
-        }
-
-        if (loadDelayValue > LIMITS.MAX_LOAD_DELAY_SECONDS) {
-          alert(t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]));
+        // Use centralized validation logic
+        const loadDelayValidation = validateLoadDelay(loadDelayMs);
+        if (!loadDelayValidation.valid) {
+          alert(loadDelayValidation.error);
           loadDelayInput.focus();
           return;
         }
@@ -592,13 +590,21 @@ class ElementSelector {
   }
 }
 
+// Extend Window interface to include our custom flag
+interface DivPingWindow extends Window {
+  __divPingContentScriptLoaded?: boolean;
+}
+
+// Cast window to our extended interface
+declare const window: DivPingWindow;
+
 // Initialize selector
 const selector = new ElementSelector();
 
 // Prevent multiple listener registrations when script is re-injected
 // Check if listener is already registered using a global flag
-if (!(window as any).__divPingContentScriptLoaded) {
-  (window as any).__divPingContentScriptLoaded = true;
+if (!window.__divPingContentScriptLoaded) {
+  window.__divPingContentScriptLoaded = true;
 
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
