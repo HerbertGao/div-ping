@@ -90,20 +90,29 @@ export interface ValidationResult {
  */
 export function validateProjectName(name: string): ValidationResult {
   if (!name || name.trim().length === 0) {
-    return { valid: false, error: 'Project name cannot be empty' };
+    return {
+      valid: false,
+      error: 'Project name cannot be empty',
+      errorCode: ValidationErrorCode.PROJECT_NAME_EMPTY
+    };
   }
 
   if (name.length > LIMITS.MAX_PROJECT_NAME_LENGTH) {
     return {
       valid: false,
-      error: `Project name cannot exceed ${LIMITS.MAX_PROJECT_NAME_LENGTH} characters`
+      error: `Project name cannot exceed ${LIMITS.MAX_PROJECT_NAME_LENGTH} characters`,
+      errorCode: ValidationErrorCode.PROJECT_NAME_TOO_LONG
     };
   }
 
   // Check for potentially problematic characters
   // eslint-disable-next-line no-control-regex -- Intentionally checking for control characters for security
   if (/[\x00-\x1F\x7F]/.test(name)) {
-    return { valid: false, error: 'Project name contains invalid control characters' };
+    return {
+      valid: false,
+      error: 'Project name contains invalid control characters',
+      errorCode: ValidationErrorCode.PROJECT_NAME_EMPTY // Use EMPTY for control chars as they're invalid
+    };
   }
 
   return { valid: true };
@@ -138,13 +147,18 @@ export function validateProjectName(name: string): ValidationResult {
  */
 export function validateSelector(selector: string): ValidationResult {
   if (!selector || selector.trim().length === 0) {
-    return { valid: false, error: 'CSS selector cannot be empty' };
+    return {
+      valid: false,
+      error: 'CSS selector cannot be empty',
+      errorCode: ValidationErrorCode.SELECTOR_EMPTY
+    };
   }
 
   if (selector.length > LIMITS.MAX_SELECTOR_LENGTH) {
     return {
       valid: false,
-      error: `CSS selector cannot exceed ${LIMITS.MAX_SELECTOR_LENGTH} characters`
+      error: `CSS selector cannot exceed ${LIMITS.MAX_SELECTOR_LENGTH} characters`,
+      errorCode: ValidationErrorCode.SELECTOR_TOO_LONG
     };
   }
 
@@ -156,7 +170,8 @@ export function validateSelector(selector: string): ValidationResult {
     } catch (err) {
       return {
         valid: false,
-        error: `Invalid CSS selector syntax: ${err instanceof Error ? err.message : 'Unknown error'}`
+        error: `Invalid CSS selector syntax: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        errorCode: ValidationErrorCode.SELECTOR_EMPTY // Use EMPTY for syntax errors
       };
     }
   }
@@ -192,13 +207,18 @@ export function validateSelector(selector: string): ValidationResult {
  */
 export function validateUrl(url: string): ValidationResult {
   if (!url || url.trim().length === 0) {
-    return { valid: false, error: 'URL cannot be empty' };
+    return {
+      valid: false,
+      error: 'URL cannot be empty',
+      errorCode: ValidationErrorCode.URL_EMPTY
+    };
   }
 
   if (url.length > LIMITS.MAX_URL_LENGTH) {
     return {
       valid: false,
-      error: `URL cannot exceed ${LIMITS.MAX_URL_LENGTH} characters`
+      error: `URL cannot exceed ${LIMITS.MAX_URL_LENGTH} characters`,
+      errorCode: ValidationErrorCode.URL_TOO_LONG
     };
   }
 
@@ -210,13 +230,15 @@ export function validateUrl(url: string): ValidationResult {
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
       return {
         valid: false,
-        error: 'Only HTTP and HTTPS protocols are allowed'
+        error: 'Only HTTP and HTTPS protocols are allowed',
+        errorCode: ValidationErrorCode.URL_INVALID_PROTOCOL
       };
     }
   } catch {
     return {
       valid: false,
-      error: 'Invalid URL format'
+      error: 'Invalid URL format',
+      errorCode: ValidationErrorCode.URL_INVALID
     };
   }
 
@@ -258,19 +280,31 @@ export function validateWebhookHeaders(headers: string | Record<string, string>)
     const headerObj = typeof headers === 'string' ? JSON.parse(headers) : headers;
 
     if (typeof headerObj !== 'object' || headerObj === null || Array.isArray(headerObj)) {
-      return { valid: false, error: 'Headers must be an object' };
+      return {
+        valid: false,
+        error: 'Headers must be an object',
+        errorCode: ValidationErrorCode.WEBHOOK_HEADERS_INVALID
+      };
     }
 
     for (const [key, value] of Object.entries(headerObj)) {
       // Validate header name (RFC 7230: token characters)
       if (!/^[!#$%&'*+\-.0-9A-Z^_`a-z|~]+$/.test(key)) {
-        return { valid: false, error: `Invalid header name: ${key}` };
+        return {
+          valid: false,
+          error: `Invalid header name: ${key}`,
+          errorCode: ValidationErrorCode.WEBHOOK_HEADERS_INVALID
+        };
       }
 
       // Validate header value (no control characters, especially CRLF for header injection prevention)
       // eslint-disable-next-line no-control-regex -- Intentionally matching control characters for security (header injection prevention)
       if (/[\r\n\x00-\x1F\x7F]/.test(String(value))) {
-        return { valid: false, error: `Invalid header value for ${key}: contains control characters` };
+        return {
+          valid: false,
+          error: `Invalid header value for ${key}: contains control characters`,
+          errorCode: ValidationErrorCode.WEBHOOK_HEADERS_INVALID
+        };
       }
     }
 
@@ -280,13 +314,18 @@ export function validateWebhookHeaders(headers: string | Record<string, string>)
     if (headersSize > LIMITS.MAX_WEBHOOK_HEADERS_SIZE) {
       return {
         valid: false,
-        error: `Webhook headers size (${headersSize} bytes) exceeds maximum ${LIMITS.MAX_WEBHOOK_HEADERS_SIZE} bytes`
+        error: `Webhook headers size (${headersSize} bytes) exceeds maximum ${LIMITS.MAX_WEBHOOK_HEADERS_SIZE} bytes`,
+        errorCode: ValidationErrorCode.WEBHOOK_HEADERS_TOO_LARGE
       };
     }
 
     return { valid: true };
   } catch (error) {
-    return { valid: false, error: `Invalid headers format: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return {
+      valid: false,
+      error: `Invalid headers format: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: ValidationErrorCode.WEBHOOK_HEADERS_INVALID
+    };
   }
 }
 
@@ -324,7 +363,8 @@ export function validateWebhookBody(body: string | Record<string, unknown>): Val
   if (bodySize > LIMITS.MAX_WEBHOOK_BODY_SIZE) {
     return {
       valid: false,
-      error: `Webhook body size (${bodySize} bytes) exceeds maximum ${LIMITS.MAX_WEBHOOK_BODY_SIZE} bytes`
+      error: `Webhook body size (${bodySize} bytes) exceeds maximum ${LIMITS.MAX_WEBHOOK_BODY_SIZE} bytes`,
+      errorCode: ValidationErrorCode.WEBHOOK_BODY_TOO_LARGE
     };
   }
 
@@ -362,20 +402,26 @@ export function validateWebhookBody(body: string | Record<string, unknown>): Val
  */
 export function validateInterval(interval: number): ValidationResult {
   if (typeof interval !== 'number' || isNaN(interval)) {
-    return { valid: false, error: 'Interval must be a valid number' };
+    return {
+      valid: false,
+      error: 'Interval must be a valid number',
+      errorCode: ValidationErrorCode.INTERVAL_INVALID
+    };
   }
 
   if (interval < LIMITS.MIN_INTERVAL_MS) {
     return {
       valid: false,
-      error: `Interval cannot be less than ${LIMITS.MIN_INTERVAL_SECONDS} seconds`
+      error: `Interval cannot be less than ${LIMITS.MIN_INTERVAL_SECONDS} seconds`,
+      errorCode: ValidationErrorCode.INTERVAL_TOO_SMALL
     };
   }
 
   if (interval > LIMITS.MAX_INTERVAL_MS) {
     return {
       valid: false,
-      error: 'Interval cannot exceed 24 hours'
+      error: 'Interval cannot exceed 24 hours',
+      errorCode: ValidationErrorCode.INTERVAL_TOO_LARGE
     };
   }
 
@@ -498,7 +544,11 @@ export function validateWebhookUrl(urlString: string): ValidationResult {
 
     // Only allow HTTP and HTTPS protocols
     if (!['http:', 'https:'].includes(url.protocol)) {
-      return { valid: false, error: 'Only HTTP and HTTPS protocols are allowed' };
+      return {
+        valid: false,
+        error: 'Only HTTP and HTTPS protocols are allowed',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID_PROTOCOL
+      };
     }
 
     // Get hostname
@@ -506,12 +556,20 @@ export function validateWebhookUrl(urlString: string): ValidationResult {
 
     // Block specific localhost hostnames
     if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-      return { valid: false, error: 'Localhost addresses are blocked for security' };
+      return {
+        valid: false,
+        error: 'Localhost addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
+      };
     }
 
     // Block internal domain suffixes
     if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-      return { valid: false, error: 'Internal domain addresses are blocked for security' };
+      return {
+        valid: false,
+        error: 'Internal domain addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
+      };
     }
 
     // Try to parse as IP address
@@ -535,7 +593,11 @@ export function validateWebhookUrl(urlString: string): ValidationResult {
       ];
 
       if (forbiddenRanges.includes(range)) {
-        return { valid: false, error: `IP range '${range}' is blocked for security` };
+        return {
+          valid: false,
+          error: `IP range '${range}' is blocked for security`,
+          errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
+        };
       }
 
       // IPv6 special checks: IPv4-mapped addresses
@@ -547,7 +609,11 @@ export function validateWebhookUrl(urlString: string): ValidationResult {
           const ipv4Range = ipv4.range();
 
           if (forbiddenRanges.includes(ipv4Range)) {
-            return { valid: false, error: `IPv4-mapped address range '${ipv4Range}' is blocked for security` };
+            return {
+              valid: false,
+              error: `IPv4-mapped address range '${ipv4Range}' is blocked for security`,
+              errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
+            };
           }
         }
       }
@@ -556,6 +622,10 @@ export function validateWebhookUrl(urlString: string): ValidationResult {
     return { valid: true };
   } catch (error) {
     // new URL() throws TypeError for invalid URLs
-    return { valid: false, error: 'Invalid URL format' };
+    return {
+      valid: false,
+      error: 'Invalid URL format',
+      errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID
+    };
   }
 }

@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from '@jest/globals';
-import { validateWebhookUrl } from '../src/ts/validation';
+import { validateWebhookUrl, ValidationErrorCode } from '../src/ts/validation';
 
 describe('Webhook URL Validation (SSRF Protection)', () => {
   describe('Valid URLs', () => {
@@ -40,22 +40,26 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should reject non-HTTP(S) protocols', () => {
       expect(validateWebhookUrl('ftp://example.com/file')).toEqual({
         valid: false,
-        error: 'Only HTTP and HTTPS protocols are allowed'
+        error: 'Only HTTP and HTTPS protocols are allowed',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID_PROTOCOL
       });
 
       expect(validateWebhookUrl('file:///etc/passwd')).toEqual({
         valid: false,
-        error: 'Only HTTP and HTTPS protocols are allowed'
+        error: 'Only HTTP and HTTPS protocols are allowed',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID_PROTOCOL
       });
 
       expect(validateWebhookUrl('javascript:alert(1)')).toEqual({
         valid: false,
-        error: 'Only HTTP and HTTPS protocols are allowed'
+        error: 'Only HTTP and HTTPS protocols are allowed',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID_PROTOCOL
       });
 
       expect(validateWebhookUrl('data:text/html,<script>alert(1)</script>')).toEqual({
         valid: false,
-        error: 'Only HTTP and HTTPS protocols are allowed'
+        error: 'Only HTTP and HTTPS protocols are allowed',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID_PROTOCOL
       });
     });
   });
@@ -64,24 +68,28 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block localhost hostname', () => {
       expect(validateWebhookUrl('http://localhost/webhook')).toEqual({
         valid: false,
-        error: 'Localhost addresses are blocked for security'
+        error: 'Localhost addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('https://localhost:3000/api')).toEqual({
         valid: false,
-        error: 'Localhost addresses are blocked for security'
+        error: 'Localhost addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block .localhost domains', () => {
       expect(validateWebhookUrl('http://app.localhost/webhook')).toEqual({
         valid: false,
-        error: 'Localhost addresses are blocked for security'
+        error: 'Localhost addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('https://test.localhost:8080/hook')).toEqual({
         valid: false,
-        error: 'Localhost addresses are blocked for security'
+        error: 'Localhost addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
   });
@@ -90,24 +98,28 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block .local domains', () => {
       expect(validateWebhookUrl('http://server.local/webhook')).toEqual({
         valid: false,
-        error: 'Internal domain addresses are blocked for security'
+        error: 'Internal domain addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('https://api.local/hook')).toEqual({
         valid: false,
-        error: 'Internal domain addresses are blocked for security'
+        error: 'Internal domain addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block .internal domains', () => {
       expect(validateWebhookUrl('http://api.internal/webhook')).toEqual({
         valid: false,
-        error: 'Internal domain addresses are blocked for security'
+        error: 'Internal domain addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('https://service.internal:8080/hook')).toEqual({
         valid: false,
-        error: 'Internal domain addresses are blocked for security'
+        error: 'Internal domain addresses are blocked for security',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
   });
@@ -116,19 +128,22 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block 127.0.0.1', () => {
       expect(validateWebhookUrl('http://127.0.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'loopback' is blocked for security"
+        error: "IP range 'loopback' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block 127.x.x.x range', () => {
       expect(validateWebhookUrl('http://127.0.0.2/api')).toEqual({
         valid: false,
-        error: "IP range 'loopback' is blocked for security"
+        error: "IP range 'loopback' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('http://127.1.1.1/hook')).toEqual({
         valid: false,
-        error: "IP range 'loopback' is blocked for security"
+        error: "IP range 'loopback' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
@@ -147,36 +162,42 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block 10.x.x.x range', () => {
       expect(validateWebhookUrl('http://10.0.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'private' is blocked for security"
+        error: "IP range 'private' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('http://10.255.255.255/api')).toEqual({
         valid: false,
-        error: "IP range 'private' is blocked for security"
+        error: "IP range 'private' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block 172.16.x.x to 172.31.x.x range', () => {
       expect(validateWebhookUrl('http://172.16.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'private' is blocked for security"
+        error: "IP range 'private' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('http://172.31.255.255/api')).toEqual({
         valid: false,
-        error: "IP range 'private' is blocked for security"
+        error: "IP range 'private' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block 192.168.x.x range', () => {
       expect(validateWebhookUrl('http://192.168.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'private' is blocked for security"
+        error: "IP range 'private' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('http://192.168.1.100/hook')).toEqual({
         valid: false,
-        error: "IP range 'private' is blocked for security"
+        error: "IP range 'private' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
   });
@@ -185,12 +206,14 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block 169.254.x.x range (RFC 3927)', () => {
       expect(validateWebhookUrl('http://169.254.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'linkLocal' is blocked for security"
+        error: "IP range 'linkLocal' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('http://169.254.169.254/metadata')).toEqual({
         valid: false,
-        error: "IP range 'linkLocal' is blocked for security"
+        error: "IP range 'linkLocal' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
@@ -207,21 +230,24 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block 0.0.0.0 (unspecified)', () => {
       expect(validateWebhookUrl('http://0.0.0.0/webhook')).toEqual({
         valid: false,
-        error: "IP range 'unspecified' is blocked for security"
+        error: "IP range 'unspecified' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block 255.255.255.255 (broadcast)', () => {
       expect(validateWebhookUrl('http://255.255.255.255/webhook')).toEqual({
         valid: false,
-        error: "IP range 'broadcast' is blocked for security"
+        error: "IP range 'broadcast' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
     it('should block multicast addresses (224.0.0.0/4)', () => {
       expect(validateWebhookUrl('http://224.0.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'multicast' is blocked for security"
+        error: "IP range 'multicast' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
 
@@ -229,19 +255,22 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
       // TEST-NET-1: 192.0.2.0/24
       expect(validateWebhookUrl('http://192.0.2.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'reserved' is blocked for security"
+        error: "IP range 'reserved' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       // TEST-NET-2: 198.51.100.0/24
       expect(validateWebhookUrl('http://198.51.100.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'reserved' is blocked for security"
+        error: "IP range 'reserved' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       // TEST-NET-3: 203.0.113.0/24
       expect(validateWebhookUrl('http://203.0.113.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'reserved' is blocked for security"
+        error: "IP range 'reserved' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
   });
@@ -250,12 +279,14 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should block 100.64.x.x range (RFC 6598)', () => {
       expect(validateWebhookUrl('http://100.64.0.1/webhook')).toEqual({
         valid: false,
-        error: "IP range 'carrierGradeNat' is blocked for security"
+        error: "IP range 'carrierGradeNat' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
 
       expect(validateWebhookUrl('http://100.127.255.255/api')).toEqual({
         valid: false,
-        error: "IP range 'carrierGradeNat' is blocked for security"
+        error: "IP range 'carrierGradeNat' is blocked for security",
+        errorCode: ValidationErrorCode.WEBHOOK_URL_SSRF_BLOCKED
       });
     });
   });
@@ -287,7 +318,8 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
     it('should reject malformed URLs', () => {
       expect(validateWebhookUrl('not a url')).toEqual({
         valid: false,
-        error: 'Invalid URL format'
+        error: 'Invalid URL format',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID
       });
 
       // 'htp' is recognized as a valid protocol by URL parser, just not HTTP(S)
@@ -297,7 +329,8 @@ describe('Webhook URL Validation (SSRF Protection)', () => {
 
       expect(validateWebhookUrl('')).toEqual({
         valid: false,
-        error: 'Invalid URL format'
+        error: 'Invalid URL format',
+        errorCode: ValidationErrorCode.WEBHOOK_URL_INVALID
       });
     });
   });
