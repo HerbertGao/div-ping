@@ -230,7 +230,7 @@
     "message": "Page Load Delay (seconds)"
   },
   "loadDelayHint": {
-    "message": "Additional delay after page load for Ajax/async content (0-60 seconds)"
+    "message": "Additional delay after page load for Ajax/async content (0-60 seconds). Note: This delay adds to the total check time."
   },
   "loadDelayInvalid": {
     "message": "Load delay must be a valid number greater than or equal to 0"

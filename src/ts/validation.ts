@@ -2,8 +2,18 @@
  * Input validation utilities
  * Validates user inputs to prevent security issues and data corruption
  *
- * Note: Error messages are in English as they serve as technical error codes.
- * For user-facing display, these should be translated in the UI layer.
+ * IMPORTANT - Error Message Language Strategy:
+ * Error messages returned from validation functions are intentionally in English
+ * because:
+ * 1. These functions run in the background service worker where i18n may not be initialized
+ * 2. They serve as technical error codes that can be logged for debugging
+ * 3. Client-side UI code (content.ts, popup.ts) should translate validation errors
+ *    using i18n when displaying to users
+ *
+ * For user-facing validation errors, the UI layer should:
+ * - Catch validation errors and show localized messages using t() function
+ * - Use error type/field to determine which i18n message to display
+ * - See _locales/en/messages.json and _locales/zh_CN/messages.json for translations
  */
 
 import ipaddr from 'ipaddr.js';

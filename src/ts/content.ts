@@ -483,12 +483,21 @@ class ElementSelector {
         }
 
         const loadDelayValue = parseFloat(loadDelayInput.value);
-        const loadDelayMs = loadDelayValue * 1000;
+        const loadDelayMs = Math.round(loadDelayValue * 1000); // Round to avoid floating-point precision issues
 
         // Use centralized validation logic
         const loadDelayValidation = validateLoadDelay(loadDelayMs);
         if (!loadDelayValidation.valid) {
-          alert(loadDelayValidation.error);
+          // Translate validation errors for user display based on error type
+          let localizedError: string;
+          if (loadDelayValidation.error?.includes('negative')) {
+            localizedError = t('loadDelayInvalid');
+          } else if (loadDelayValidation.error?.includes('exceed')) {
+            localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
+          } else {
+            localizedError = t('loadDelayInvalid');
+          }
+          alert(localizedError);
           loadDelayInput.focus();
           return;
         }
@@ -598,13 +607,13 @@ interface DivPingWindow extends Window {
 // Cast window to our extended interface
 declare const window: DivPingWindow;
 
-// Initialize selector
-const selector = new ElementSelector();
-
 // Prevent multiple listener registrations when script is re-injected
 // Check if listener is already registered using a global flag
 if (!window.__divPingContentScriptLoaded) {
   window.__divPingContentScriptLoaded = true;
+
+  // Initialize selector inside guard to ensure it's created exactly once
+  const selector = new ElementSelector();
 
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
