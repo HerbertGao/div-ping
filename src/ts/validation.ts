@@ -385,7 +385,7 @@ export function validateInterval(interval: number): ValidationResult {
 /**
  * Validates page load delay for reasonable time bounds
  *
- * @param delay - Page load delay in milliseconds
+ * @param delay - Page load delay in milliseconds (caller should round using Math.round() if converting from seconds to avoid floating-point precision issues)
  * @returns ValidationResult object with valid flag and optional error message
  *
  * @remarks
@@ -397,6 +397,10 @@ export function validateInterval(interval: number): ValidationResult {
  * Rationale for limits:
  * - Minimum allows instant checking when no delay is needed
  * - Maximum prevents excessive waiting that could cause timeout issues
+ *
+ * Important: When converting from user input (seconds) to milliseconds, the caller
+ * should use Math.round() to ensure clean integer values and avoid floating-point
+ * precision issues (e.g., 0.5 seconds should be rounded to 500ms, not 499.99999ms)
  *
  * @example
  * ```typescript
@@ -410,6 +414,11 @@ export function validateInterval(interval: number): ValidationResult {
  * validateLoadDelay(-1000);       // Negative - { valid: false, error: 'Load delay cannot be negative' }
  * validateLoadDelay(70000);       // Too long - { valid: false, error: 'Load delay cannot exceed 60 seconds' }
  * validateLoadDelay(NaN);         // Not a number - { valid: false, error: 'Load delay must be a valid number' }
+ *
+ * // Recommended usage pattern:
+ * const userInputSeconds = 0.5;
+ * const delayMs = Math.round(userInputSeconds * 1000);  // 500, not 499.99999
+ * validateLoadDelay(delayMs);
  * ```
  */
 export function validateLoadDelay(delay: number): ValidationResult {

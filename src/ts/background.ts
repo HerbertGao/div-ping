@@ -36,6 +36,20 @@ class MonitorManager {
     this.setupTabCleanup();
   }
 
+  /**
+   * Validates and returns load delay value, applying default if not provided
+   * @param messageLoadDelay - Load delay from message (may be undefined)
+   * @returns Validation result with validated load delay value
+   */
+  private validateAndGetLoadDelay(messageLoadDelay: number | undefined): { valid: boolean; value?: number; error?: string } {
+    const loadDelay = messageLoadDelay ?? DEFAULTS.LOAD_DELAY_MS;
+    const validation = validateLoadDelay(loadDelay);
+    if (!validation.valid) {
+      return { valid: false, error: validation.error };
+    }
+    return { valid: true, value: loadDelay };
+  }
+
   // Setup tab cleanup listeners
   private setupTabCleanup(): void {
     // Listen for tab close events and clean cache
@@ -183,12 +197,12 @@ class MonitorManager {
           }
 
           // Validate load delay (default to DEFAULTS.LOAD_DELAY_MS if not provided for backwards compatibility or direct API calls)
-          const loadDelay = message.loadDelay !== undefined ? message.loadDelay : DEFAULTS.LOAD_DELAY_MS;
-          const loadDelayValidation = validateLoadDelay(loadDelay);
-          if (!loadDelayValidation.valid) {
-            sendResponse({ success: false, error: loadDelayValidation.error });
+          const loadDelayResult = this.validateAndGetLoadDelay(message.loadDelay);
+          if (!loadDelayResult.valid) {
+            sendResponse({ success: false, error: loadDelayResult.error });
             break;
           }
+          const loadDelay = loadDelayResult.value!;
 
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
@@ -268,12 +282,12 @@ class MonitorManager {
           }
 
           // Validate load delay (default to DEFAULTS.LOAD_DELAY_MS if not provided for backwards compatibility or direct API calls)
-          const updateLoadDelay = message.loadDelay !== undefined ? message.loadDelay : DEFAULTS.LOAD_DELAY_MS;
-          const updateLoadDelayValidation = validateLoadDelay(updateLoadDelay);
-          if (!updateLoadDelayValidation.valid) {
-            sendResponse({ success: false, error: updateLoadDelayValidation.error });
+          const loadDelayResult = this.validateAndGetLoadDelay(message.loadDelay);
+          if (!loadDelayResult.valid) {
+            sendResponse({ success: false, error: loadDelayResult.error });
             break;
           }
+          const loadDelay = loadDelayResult.value!;
 
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
@@ -301,7 +315,7 @@ class MonitorManager {
             browserNotification: message.browserNotification,
             webhook: message.webhook || { enabled: false },
             lastContent: message.initialContent,
-            loadDelay: updateLoadDelay
+            loadDelay: loadDelay
           });
 
           if (!updatedProject) {
@@ -577,10 +591,11 @@ class MonitorManager {
       // Wait for page to load
       await this.waitForTabLoad(tab.id);
 
-      // Additional delay for Ajax/async content if configured
+      // Use configured load delay, defaulting to 0 for backwards compatibility
+      // (UI always sends loadDelay, but older saved projects or direct API calls may not have it)
       const loadDelay = project.loadDelay ?? DEFAULTS.LOAD_DELAY_MS;
       if (loadDelay > 0) {
-        console.log(`[${project.name}] Waiting ${loadDelay}ms for dynamic content to load...`);
+        console.log(`[${project.name}] Waiting ${loadDelay}ms for dynamic content...`);
         await new Promise(resolve => setTimeout(resolve, loadDelay));
       }
 
