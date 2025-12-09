@@ -2,10 +2,12 @@ import { initI18nForHTML, t } from './i18n';
 import { storageManager } from './storageManager';
 import { ExportData, Settings } from './types';
 
+import { DEFAULTS } from './constants';
+
 // Options page logic
 class OptionsManager {
   private defaultSettings: Settings = {
-    defaultInterval: 30,
+    defaultInterval: DEFAULTS.INTERVAL_SECONDS,
     defaultBrowserNotification: true,
     defaultWebhook: false,
     defaultWebhookUrl: '',

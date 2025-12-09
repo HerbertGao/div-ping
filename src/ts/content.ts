@@ -1,6 +1,7 @@
 import { DEFAULTS, LIMITS } from './constants';
 import { t } from './i18n';
 import { MessageRequest, MessageResponse, Project, WebhookConfig } from './types';
+import { validateLoadDelay, ValidationErrorCode } from './validation';
 
 // Element selection mode
 class ElementSelector {
@@ -192,6 +193,19 @@ class ElementSelector {
           <div style="font-size: 12px; color: #FF9800; margin-top: 4px;">${t('minIntervalWarning', [LIMITS.MIN_INTERVAL_SECONDS.toString()])}</div>
         </div>
 
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; margin-bottom: 4px; font-size: 14px; color: #666;">${t('loadDelaySeconds')}:</label>
+          <input type="number" id="loadDelay" value="${existingProject && existingProject.loadDelay !== undefined ? existingProject.loadDelay / 1000 : 0}" min="0" max="${LIMITS.MAX_LOAD_DELAY_SECONDS}" step="${DEFAULTS.LOAD_DELAY_INPUT_STEP_SECONDS}" style="
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+          ">
+          <div id="loadDelayError" style="display: none; font-size: 12px; color: #f44336; margin-top: 4px;"></div>
+          <div style="font-size: 12px; color: #999; margin-top: 4px;">${t('loadDelayHint')}</div>
+        </div>
+
         <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
           <label style="display: flex; align-items: center; font-size: 14px; color: #666;">
             <input type="checkbox" id="browserNotification" ${existingProject ? (existingProject.browserNotification ? 'checked' : '') : 'checked'} style="margin-right: 8px;">
@@ -315,8 +329,10 @@ class ElementSelector {
     const webhookConfig = dialog.querySelector<HTMLElement>('#webhookConfig');
     const testBrowserBtn = dialog.querySelector<HTMLButtonElement>('#testBrowserNotification');
     const testWebhookBtn = dialog.querySelector<HTMLButtonElement>('#testWebhook');
+    const loadDelayInput = dialog.querySelector<HTMLInputElement>('#loadDelay');
+    const loadDelayError = dialog.querySelector<HTMLElement>('#loadDelayError');
 
-    if (!browserNotificationCheckbox || !enableWebhook || !webhookConfig || !testBrowserBtn || !testWebhookBtn) {
+    if (!browserNotificationCheckbox || !enableWebhook || !webhookConfig || !testBrowserBtn || !testWebhookBtn || !loadDelayInput || !loadDelayError) {
       console.error('Failed to find required dialog elements');
       dialog.remove();
       return;
@@ -331,6 +347,64 @@ class ElementSelector {
     enableWebhook.addEventListener('change', () => {
       webhookConfig.style.display = enableWebhook.checked ? 'block' : 'none';
       testWebhookBtn.disabled = !enableWebhook.checked;
+    });
+
+    // Real-time validation for load delay
+    const validateLoadDelayInput = () => {
+      const loadDelayValue = parseFloat(loadDelayInput.value);
+      const loadDelayMs = Math.round(loadDelayValue * 1000);
+
+      const validation = validateLoadDelay(loadDelayMs);
+      const confirmBtn = dialog.querySelector<HTMLButtonElement>('#confirmBtn');
+
+      if (!validation.valid) {
+        // Show error message
+        let localizedError: string;
+        switch (validation.errorCode) {
+          case ValidationErrorCode.LOAD_DELAY_NEGATIVE:
+          case ValidationErrorCode.LOAD_DELAY_INVALID:
+            localizedError = t('loadDelayInvalid');
+            break;
+          case ValidationErrorCode.LOAD_DELAY_TOO_LARGE:
+            localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
+            break;
+          default:
+            // Safety fallback for unexpected error codes (should never happen)
+            localizedError = t('loadDelayInvalid');
+        }
+
+        loadDelayError.textContent = localizedError;
+        loadDelayError.style.display = 'block';
+        loadDelayInput.style.borderColor = '#f44336';
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.style.opacity = '0.5';
+          confirmBtn.style.cursor = 'not-allowed';
+        }
+      } else {
+        // Clear error message
+        loadDelayError.style.display = 'none';
+        loadDelayInput.style.borderColor = '#ddd';
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.style.opacity = '1';
+          confirmBtn.style.cursor = 'pointer';
+        }
+      }
+    };
+
+    // Add input event listener with debouncing for better UX
+    // Prevents validation errors while user is typing decimal values (e.g., "3." before completing "3.5")
+    let validationTimeout: number | undefined;
+    loadDelayInput.addEventListener('input', () => {
+      clearTimeout(validationTimeout);
+      validationTimeout = window.setTimeout(validateLoadDelayInput, 300);
+    });
+
+    // Also validate on blur for immediate feedback when leaving field
+    loadDelayInput.addEventListener('blur', () => {
+      clearTimeout(validationTimeout);
+      validateLoadDelayInput();
     });
 
     // Test browser notification button
@@ -439,6 +513,8 @@ class ElementSelector {
     const cancelBtn = dialog.querySelector<HTMLButtonElement>('#cancelBtn');
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
+        // Clean up validation timeout to prevent memory leaks
+        clearTimeout(validationTimeout);
         dialog.remove();
       });
     }
@@ -462,6 +538,38 @@ class ElementSelector {
           return;
         }
 
+        // Validate load delay
+        const loadDelayInput = dialog.querySelector<HTMLInputElement>('#loadDelay');
+        if (!loadDelayInput) {
+          console.error('Failed to find load delay input');
+          return;
+        }
+
+        const loadDelayValue = parseFloat(loadDelayInput.value);
+        const loadDelayMs = Math.round(loadDelayValue * 1000); // Round to avoid floating-point precision issues
+
+        // Use centralized validation logic
+        const loadDelayValidation = validateLoadDelay(loadDelayMs);
+        if (!loadDelayValidation.valid) {
+          // Translate validation errors for user display using error codes
+          let localizedError: string;
+          switch (loadDelayValidation.errorCode) {
+            case ValidationErrorCode.LOAD_DELAY_NEGATIVE:
+            case ValidationErrorCode.LOAD_DELAY_INVALID:
+              localizedError = t('loadDelayInvalid');
+              break;
+            case ValidationErrorCode.LOAD_DELAY_TOO_LARGE:
+              localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
+              break;
+            default:
+              // Safety fallback for unexpected error codes (should never happen)
+              localizedError = t('loadDelayInvalid');
+          }
+          alert(localizedError);
+          loadDelayInput.focus();
+          return;
+        }
+
         // Get all required form fields
         const projectNameInput = dialog.querySelector<HTMLInputElement>('#projectName');
         const elementSelectorInput = dialog.querySelector<HTMLInputElement>('#elementSelector');
@@ -478,6 +586,7 @@ class ElementSelector {
           name: projectNameInput.value,
           selector: elementSelectorInput.value,
           interval: intervalValue * 1000,
+          loadDelay: loadDelayMs, // Use the rounded value to ensure consistency with validation
           browserNotification: browserNotificationCheckbox.checked,
           url: existingProject ? existingProject.url : window.location.href,
           initialContent: initialContent
@@ -538,6 +647,8 @@ class ElementSelector {
         }
       });
 
+      // Clean up validation timeout to prevent memory leaks
+      clearTimeout(validationTimeout);
       dialog.remove();
       });
     }
@@ -558,11 +669,24 @@ class ElementSelector {
   }
 }
 
-// Initialize selector
-const selector = new ElementSelector();
+// Extend Window interface to include our custom flag
+interface DivPingWindow extends Window {
+  __divPingContentScriptLoaded?: boolean;
+}
 
-// Listen for messages from popup
-chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
+// Cast window to our extended interface
+declare const window: DivPingWindow;
+
+// Prevent multiple listener registrations when script is re-injected
+// Check if listener is already registered using a global flag
+if (!window.__divPingContentScriptLoaded) {
+  window.__divPingContentScriptLoaded = true;
+
+  // Initialize selector inside guard to ensure it's created exactly once
+  const selector = new ElementSelector();
+
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
   if (message.action === 'ping') {
     // Respond to ping to indicate content script is loaded
     sendResponse({ success: true });
@@ -607,4 +731,5 @@ chrome.runtime.onMessage.addListener((message: MessageRequest, _sender: chrome.r
     return true; // Keep message channel open
   }
   return false;
-});
+  });
+}

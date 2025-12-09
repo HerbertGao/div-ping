@@ -181,6 +181,47 @@ describe('StorageManager', () => {
       const expectedProject = { ...project, active: false };
       expect(mockSet).toHaveBeenCalledWith({ projects: [expectedProject] });
     });
+
+    it('should update loadDelay field', async () => {
+      const project: Project = {
+        id: '1',
+        name: 'Test',
+        url: 'https://example.com',
+        selector: '.test',
+        interval: 60000,
+        active: true,
+        browserNotification: true,
+      };
+
+      mockGet.mockResolvedValue({ projects: [project] });
+      mockSet.mockResolvedValue(undefined);
+
+      await storageManager.updateProject('1', { loadDelay: 5000 });
+
+      const expectedProject = { ...project, loadDelay: 5000 };
+      expect(mockSet).toHaveBeenCalledWith({ projects: [expectedProject] });
+    });
+
+    it('should clear loadDelay when set to 0', async () => {
+      const project: Project = {
+        id: '1',
+        name: 'Test',
+        url: 'https://example.com',
+        selector: '.test',
+        interval: 60000,
+        active: true,
+        browserNotification: true,
+        loadDelay: 5000,
+      };
+
+      mockGet.mockResolvedValue({ projects: [project] });
+      mockSet.mockResolvedValue(undefined);
+
+      await storageManager.updateProject('1', { loadDelay: 0 });
+
+      const expectedProject = { ...project, loadDelay: 0 };
+      expect(mockSet).toHaveBeenCalledWith({ projects: [expectedProject] });
+    });
   });
 
   describe('removeProject()', () => {

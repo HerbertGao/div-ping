@@ -1,8 +1,8 @@
-import { ALARM, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } from './constants';
+import { ALARM, DEFAULTS, LIMITS, NOTIFICATION, TIMEOUTS, WEBHOOK_RATE_LIMIT } from './constants';
 import { t } from './i18n';
 import { storageManager } from './storageManager';
 import { LogEntry, MessageRequest, MessageResponse, Project, Settings, WebhookConfig } from './types';
-import { validateInterval, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl } from './validation';
+import { validateInterval, validateLoadDelay, validateProjectName, validateSelector, validateUrl, validateWebhookBody, validateWebhookHeaders, validateWebhookUrl, ValidationResultWithValue } from './validation';
 
 // Monitor info interface (no longer needs intervalId)
 interface MonitorInfo {
@@ -34,6 +34,20 @@ class MonitorManager {
   constructor() {
     this.init();
     this.setupTabCleanup();
+  }
+
+  /**
+   * Validates and returns load delay value, applying default if not provided
+   * @param messageLoadDelay - Load delay from message (may be undefined)
+   * @returns Validation result with validated load delay value
+   */
+  private validateAndGetLoadDelay(messageLoadDelay: number | undefined): ValidationResultWithValue<number> {
+    const loadDelay = messageLoadDelay ?? DEFAULTS.LOAD_DELAY_MS;
+    const validation = validateLoadDelay(loadDelay);
+    if (!validation.valid) {
+      return { valid: false, error: validation.error, errorCode: validation.errorCode };
+    }
+    return { valid: true, value: loadDelay };
   }
 
   // Setup tab cleanup listeners
@@ -182,6 +196,15 @@ class MonitorManager {
             break;
           }
 
+          // Validate load delay (default to DEFAULTS.LOAD_DELAY_MS if not provided for backwards compatibility or direct API calls)
+          const loadDelayResult = this.validateAndGetLoadDelay(message.loadDelay);
+          if (!loadDelayResult.valid) {
+            sendResponse({ success: false, error: loadDelayResult.error });
+            break;
+          }
+          // Value is guaranteed to be set when valid is true
+          const loadDelay = loadDelayResult.value as number;
+
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
             if (message.webhook.body) {
@@ -217,7 +240,8 @@ class MonitorManager {
             browserNotification: message.browserNotification !== false,
             webhook: message.webhook || { enabled: false },
             lastContent: message.initialContent,
-            tabId: sender.tab?.id || null
+            tabId: sender.tab?.id || null,
+            loadDelay: loadDelay
           };
 
           // Save to storage
@@ -258,6 +282,15 @@ class MonitorManager {
             break;
           }
 
+          // Validate load delay (default to DEFAULTS.LOAD_DELAY_MS if not provided for backwards compatibility or direct API calls)
+          const loadDelayResult = this.validateAndGetLoadDelay(message.loadDelay);
+          if (!loadDelayResult.valid) {
+            sendResponse({ success: false, error: loadDelayResult.error });
+            break;
+          }
+          // Value is guaranteed to be set when valid is true
+          const loadDelay = loadDelayResult.value as number;
+
           // Validate webhook configuration if present
           if (message.webhook?.enabled) {
             if (message.webhook.body) {
@@ -283,7 +316,8 @@ class MonitorManager {
             interval: message.interval,
             browserNotification: message.browserNotification,
             webhook: message.webhook || { enabled: false },
-            lastContent: message.initialContent
+            lastContent: message.initialContent,
+            loadDelay: loadDelay
           });
 
           if (!updatedProject) {
@@ -558,6 +592,14 @@ class MonitorManager {
 
       // Wait for page to load
       await this.waitForTabLoad(tab.id);
+
+      // Use configured load delay, defaulting to 0 for backwards compatibility
+      // (UI always sends loadDelay, but older saved projects or direct API calls may not have it)
+      const loadDelay = project.loadDelay ?? DEFAULTS.LOAD_DELAY_MS;
+      if (loadDelay > 0) {
+        console.log(`[${project.name}] Waiting ${loadDelay}ms for dynamic content...`);
+        await new Promise(resolve => setTimeout(resolve, loadDelay));
+      }
 
       // Inject content script into the tab
       await this.injectContentScript(tab.id);

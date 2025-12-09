@@ -41,6 +41,10 @@ export const LIMITS = {
   MAX_INTERVAL_MS: 86400000,
   /** Maximum tab cache size (increased to support monitoring many URLs) */
   MAX_TAB_CACHE_SIZE: 200,
+  /** Maximum page load delay in milliseconds (60 seconds) */
+  MAX_LOAD_DELAY_MS: 60000,
+  /** Maximum page load delay in seconds */
+  MAX_LOAD_DELAY_SECONDS: 60,
 } as const;
 
 /**
@@ -51,6 +55,15 @@ export const DEFAULTS = {
   INTERVAL_SECONDS: 60,
   /** Default monitoring interval in milliseconds */
   INTERVAL_MS: 60000,
+  /** Default load delay in milliseconds (no delay) */
+  LOAD_DELAY_MS: 0,
+  /**
+   * Load delay input step size in seconds
+   * Set to 0.5 for half-second precision to balance between:
+   * - Fine-tuning capability for Ajax content (too coarse = missed timing windows)
+   * - Preventing users from setting overly precise values (too fine = unnecessary complexity)
+   */
+  LOAD_DELAY_INPUT_STEP_SECONDS: 0.5,
 } as const;
 
 /**

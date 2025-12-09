@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { LIMITS } from '../src/ts/constants';
 import {
   validateInterval,
+  validateLoadDelay,
   validateProjectName,
   validateSelector,
   validateUrl,
@@ -138,6 +139,55 @@ describe('Validation Module', () => {
 
     it('should accept maximum interval (24 hours)', () => {
       expect(validateInterval(LIMITS.MAX_INTERVAL_MS)).toEqual({ valid: true });
+    });
+  });
+
+  describe('validateLoadDelay()', () => {
+    it('should accept valid load delays', () => {
+      expect(validateLoadDelay(0)).toEqual({ valid: true });
+      expect(validateLoadDelay(1000)).toEqual({ valid: true });
+      expect(validateLoadDelay(5000)).toEqual({ valid: true });
+      expect(validateLoadDelay(30000)).toEqual({ valid: true });
+      expect(validateLoadDelay(LIMITS.MAX_LOAD_DELAY_MS)).toEqual({ valid: true });
+    });
+
+    it('should accept fractional delays (half-second precision)', () => {
+      expect(validateLoadDelay(500)).toEqual({ valid: true });   // 0.5 seconds
+      expect(validateLoadDelay(1500)).toEqual({ valid: true });  // 1.5 seconds
+      expect(validateLoadDelay(2500)).toEqual({ valid: true });  // 2.5 seconds
+      expect(validateLoadDelay(59500)).toEqual({ valid: true }); // 59.5 seconds
+    });
+
+    it('should reject non-numeric delays', () => {
+      const result = validateLoadDelay(NaN);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('must be a valid number');
+    });
+
+    it('should reject negative delays', () => {
+      const result = validateLoadDelay(-1);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('cannot be negative');
+    });
+
+    it('should accept zero delay (no delay)', () => {
+      expect(validateLoadDelay(0)).toEqual({ valid: true });
+    });
+
+    it('should reject delays above maximum (60 seconds)', () => {
+      const result = validateLoadDelay(LIMITS.MAX_LOAD_DELAY_MS + 1);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('cannot exceed');
+    });
+
+    it('should accept maximum delay (60 seconds)', () => {
+      expect(validateLoadDelay(LIMITS.MAX_LOAD_DELAY_MS)).toEqual({ valid: true });
+    });
+
+    it('should reject very large delays', () => {
+      const result = validateLoadDelay(120000); // 120 seconds
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('cannot exceed');
     });
   });
 
