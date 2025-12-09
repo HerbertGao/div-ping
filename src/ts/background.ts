@@ -182,7 +182,7 @@ class MonitorManager {
             break;
           }
 
-          // Validate load delay if present
+          // Validate load delay (default to 0 if not provided for backwards compatibility or direct API calls)
           const loadDelay = message.loadDelay !== undefined ? message.loadDelay : 0;
           const loadDelayValidation = validateLoadDelay(loadDelay);
           if (!loadDelayValidation.valid) {
@@ -267,7 +267,7 @@ class MonitorManager {
             break;
           }
 
-          // Validate load delay if present
+          // Validate load delay (default to 0 if not provided for backwards compatibility or direct API calls)
           const updateLoadDelay = message.loadDelay !== undefined ? message.loadDelay : 0;
           const updateLoadDelayValidation = validateLoadDelay(updateLoadDelay);
           if (!updateLoadDelayValidation.valid) {

@@ -19,9 +19,48 @@
 import ipaddr from 'ipaddr.js';
 import { LIMITS } from './constants';
 
+/**
+ * Standardized error codes for validation failures
+ * Used by client-side code to determine which i18n message to display
+ */
+export enum ValidationErrorCode {
+  // Project name errors
+  PROJECT_NAME_EMPTY = 'PROJECT_NAME_EMPTY',
+  PROJECT_NAME_TOO_LONG = 'PROJECT_NAME_TOO_LONG',
+
+  // URL errors
+  URL_EMPTY = 'URL_EMPTY',
+  URL_INVALID = 'URL_INVALID',
+  URL_INVALID_PROTOCOL = 'URL_INVALID_PROTOCOL',
+  URL_TOO_LONG = 'URL_TOO_LONG',
+
+  // Selector errors
+  SELECTOR_EMPTY = 'SELECTOR_EMPTY',
+  SELECTOR_TOO_LONG = 'SELECTOR_TOO_LONG',
+
+  // Interval errors
+  INTERVAL_INVALID = 'INTERVAL_INVALID',
+  INTERVAL_TOO_SMALL = 'INTERVAL_TOO_SMALL',
+  INTERVAL_TOO_LARGE = 'INTERVAL_TOO_LARGE',
+
+  // Load delay errors
+  LOAD_DELAY_INVALID = 'LOAD_DELAY_INVALID',
+  LOAD_DELAY_NEGATIVE = 'LOAD_DELAY_NEGATIVE',
+  LOAD_DELAY_TOO_LARGE = 'LOAD_DELAY_TOO_LARGE',
+
+  // Webhook errors
+  WEBHOOK_URL_INVALID = 'WEBHOOK_URL_INVALID',
+  WEBHOOK_URL_INVALID_PROTOCOL = 'WEBHOOK_URL_INVALID_PROTOCOL',
+  WEBHOOK_URL_SSRF_BLOCKED = 'WEBHOOK_URL_SSRF_BLOCKED',
+  WEBHOOK_BODY_TOO_LARGE = 'WEBHOOK_BODY_TOO_LARGE',
+  WEBHOOK_HEADERS_INVALID = 'WEBHOOK_HEADERS_INVALID',
+  WEBHOOK_HEADERS_TOO_LARGE = 'WEBHOOK_HEADERS_TOO_LARGE',
+}
+
 export interface ValidationResult {
   valid: boolean;
   error?: string;
+  errorCode?: ValidationErrorCode;
 }
 
 /**
@@ -375,20 +414,26 @@ export function validateInterval(interval: number): ValidationResult {
  */
 export function validateLoadDelay(delay: number): ValidationResult {
   if (typeof delay !== 'number' || isNaN(delay)) {
-    return { valid: false, error: 'Load delay must be a valid number' };
+    return {
+      valid: false,
+      error: 'Load delay must be a valid number',
+      errorCode: ValidationErrorCode.LOAD_DELAY_INVALID
+    };
   }
 
   if (delay < 0) {
     return {
       valid: false,
-      error: 'Load delay cannot be negative'
+      error: 'Load delay cannot be negative',
+      errorCode: ValidationErrorCode.LOAD_DELAY_NEGATIVE
     };
   }
 
   if (delay > LIMITS.MAX_LOAD_DELAY_MS) {
     return {
       valid: false,
-      error: `Load delay cannot exceed ${LIMITS.MAX_LOAD_DELAY_SECONDS} seconds`
+      error: `Load delay cannot exceed ${LIMITS.MAX_LOAD_DELAY_SECONDS} seconds`,
+      errorCode: ValidationErrorCode.LOAD_DELAY_TOO_LARGE
     };
   }
 

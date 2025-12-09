@@ -1,7 +1,7 @@
 import { DEFAULTS, LIMITS } from './constants';
 import { t } from './i18n';
 import { MessageRequest, MessageResponse, Project, WebhookConfig } from './types';
-import { validateLoadDelay } from './validation';
+import { validateLoadDelay, ValidationErrorCode } from './validation';
 
 // Element selection mode
 class ElementSelector {
@@ -488,14 +488,19 @@ class ElementSelector {
         // Use centralized validation logic
         const loadDelayValidation = validateLoadDelay(loadDelayMs);
         if (!loadDelayValidation.valid) {
-          // Translate validation errors for user display based on error type
+          // Translate validation errors for user display using error codes
           let localizedError: string;
-          if (loadDelayValidation.error?.includes('negative')) {
-            localizedError = t('loadDelayInvalid');
-          } else if (loadDelayValidation.error?.includes('exceed')) {
-            localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
-          } else {
-            localizedError = t('loadDelayInvalid');
+          switch (loadDelayValidation.errorCode) {
+            case ValidationErrorCode.LOAD_DELAY_NEGATIVE:
+            case ValidationErrorCode.LOAD_DELAY_INVALID:
+              localizedError = t('loadDelayInvalid');
+              break;
+            case ValidationErrorCode.LOAD_DELAY_TOO_LARGE:
+              localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
+              break;
+            default:
+              // Fallback for unexpected error codes
+              localizedError = t('loadDelayInvalid');
           }
           alert(localizedError);
           loadDelayInput.focus();
