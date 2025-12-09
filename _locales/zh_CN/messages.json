@@ -276,6 +276,12 @@
   "projectNameRequired": {
     "message": "请输入项目名称"
   },
+  "projectNameInvalidChars": {
+    "message": "项目名称包含无效的控制字符"
+  },
+  "selectorInvalidSyntax": {
+    "message": "CSS选择器语法无效"
+  },
   "intervalInvalid": {
     "message": "刷新间隔必须大于等于60秒"
   },

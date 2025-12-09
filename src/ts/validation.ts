@@ -27,6 +27,7 @@ export enum ValidationErrorCode {
   // Project name errors
   PROJECT_NAME_EMPTY = 'PROJECT_NAME_EMPTY',
   PROJECT_NAME_TOO_LONG = 'PROJECT_NAME_TOO_LONG',
+  PROJECT_NAME_INVALID_CHARS = 'PROJECT_NAME_INVALID_CHARS',
 
   // URL errors
   URL_EMPTY = 'URL_EMPTY',
@@ -37,6 +38,7 @@ export enum ValidationErrorCode {
   // Selector errors
   SELECTOR_EMPTY = 'SELECTOR_EMPTY',
   SELECTOR_TOO_LONG = 'SELECTOR_TOO_LONG',
+  SELECTOR_INVALID_SYNTAX = 'SELECTOR_INVALID_SYNTAX',
 
   // Interval errors
   INTERVAL_INVALID = 'INTERVAL_INVALID',
@@ -111,7 +113,7 @@ export function validateProjectName(name: string): ValidationResult {
     return {
       valid: false,
       error: 'Project name contains invalid control characters',
-      errorCode: ValidationErrorCode.PROJECT_NAME_EMPTY // Use EMPTY for control chars as they're invalid
+      errorCode: ValidationErrorCode.PROJECT_NAME_INVALID_CHARS
     };
   }
 
@@ -171,7 +173,7 @@ export function validateSelector(selector: string): ValidationResult {
       return {
         valid: false,
         error: `Invalid CSS selector syntax: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        errorCode: ValidationErrorCode.SELECTOR_EMPTY // Use EMPTY for syntax errors
+        errorCode: ValidationErrorCode.SELECTOR_INVALID_SYNTAX
       };
     }
   }

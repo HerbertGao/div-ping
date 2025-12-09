@@ -276,6 +276,12 @@
   "projectNameRequired": {
     "message": "Please enter project name"
   },
+  "projectNameInvalidChars": {
+    "message": "Project name contains invalid control characters"
+  },
+  "selectorInvalidSyntax": {
+    "message": "Invalid CSS selector syntax"
+  },
   "intervalInvalid": {
     "message": "Refresh interval must be at least 60 seconds"
   },
