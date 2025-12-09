@@ -518,7 +518,7 @@ class ElementSelector {
           name: projectNameInput.value,
           selector: elementSelectorInput.value,
           interval: intervalValue * 1000,
-          loadDelay: loadDelayValue * 1000,
+          loadDelay: loadDelayMs, // Use the rounded value to ensure consistency with validation
           browserNotification: browserNotificationCheckbox.checked,
           url: existingProject ? existingProject.url : window.location.href,
           initialContent: initialContent
