@@ -202,6 +202,7 @@ class ElementSelector {
             border-radius: 4px;
             font-size: 14px;
           ">
+          <div id="loadDelayError" style="display: none; font-size: 12px; color: #f44336; margin-top: 4px;"></div>
           <div style="font-size: 12px; color: #999; margin-top: 4px;">${t('loadDelayHint')}</div>
         </div>
 
@@ -328,8 +329,10 @@ class ElementSelector {
     const webhookConfig = dialog.querySelector<HTMLElement>('#webhookConfig');
     const testBrowserBtn = dialog.querySelector<HTMLButtonElement>('#testBrowserNotification');
     const testWebhookBtn = dialog.querySelector<HTMLButtonElement>('#testWebhook');
+    const loadDelayInput = dialog.querySelector<HTMLInputElement>('#loadDelay');
+    const loadDelayError = dialog.querySelector<HTMLElement>('#loadDelayError');
 
-    if (!browserNotificationCheckbox || !enableWebhook || !webhookConfig || !testBrowserBtn || !testWebhookBtn) {
+    if (!browserNotificationCheckbox || !enableWebhook || !webhookConfig || !testBrowserBtn || !testWebhookBtn || !loadDelayInput || !loadDelayError) {
       console.error('Failed to find required dialog elements');
       dialog.remove();
       return;
@@ -345,6 +348,52 @@ class ElementSelector {
       webhookConfig.style.display = enableWebhook.checked ? 'block' : 'none';
       testWebhookBtn.disabled = !enableWebhook.checked;
     });
+
+    // Real-time validation for load delay
+    const validateLoadDelayInput = () => {
+      const loadDelayValue = parseFloat(loadDelayInput.value);
+      const loadDelayMs = Math.round(loadDelayValue * 1000);
+
+      const validation = validateLoadDelay(loadDelayMs);
+      const confirmBtn = dialog.querySelector<HTMLButtonElement>('#confirmBtn');
+
+      if (!validation.valid) {
+        // Show error message
+        let localizedError: string;
+        switch (validation.errorCode) {
+          case ValidationErrorCode.LOAD_DELAY_NEGATIVE:
+          case ValidationErrorCode.LOAD_DELAY_INVALID:
+            localizedError = t('loadDelayInvalid');
+            break;
+          case ValidationErrorCode.LOAD_DELAY_TOO_LARGE:
+            localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
+            break;
+          default:
+            localizedError = t('loadDelayInvalid');
+        }
+
+        loadDelayError.textContent = localizedError;
+        loadDelayError.style.display = 'block';
+        loadDelayInput.style.borderColor = '#f44336';
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.style.opacity = '0.5';
+          confirmBtn.style.cursor = 'not-allowed';
+        }
+      } else {
+        // Clear error message
+        loadDelayError.style.display = 'none';
+        loadDelayInput.style.borderColor = '#ddd';
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.style.opacity = '1';
+          confirmBtn.style.cursor = 'pointer';
+        }
+      }
+    };
+
+    // Add input event listener for real-time validation
+    loadDelayInput.addEventListener('input', validateLoadDelayInput);
 
     // Test browser notification button
     testBrowserBtn.addEventListener('click', () => {
