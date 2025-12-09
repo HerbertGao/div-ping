@@ -369,6 +369,7 @@ class ElementSelector {
             localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
             break;
           default:
+            // Safety fallback for unexpected error codes (should never happen)
             localizedError = t('loadDelayInvalid');
         }
 
@@ -512,6 +513,8 @@ class ElementSelector {
     const cancelBtn = dialog.querySelector<HTMLButtonElement>('#cancelBtn');
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
+        // Clean up validation timeout to prevent memory leaks
+        clearTimeout(validationTimeout);
         dialog.remove();
       });
     }
@@ -559,7 +562,7 @@ class ElementSelector {
               localizedError = t('loadDelayTooLarge', [LIMITS.MAX_LOAD_DELAY_SECONDS.toString()]);
               break;
             default:
-              // Fallback for unexpected error codes
+              // Safety fallback for unexpected error codes (should never happen)
               localizedError = t('loadDelayInvalid');
           }
           alert(localizedError);
@@ -644,6 +647,8 @@ class ElementSelector {
         }
       });
 
+      // Clean up validation timeout to prevent memory leaks
+      clearTimeout(validationTimeout);
       dialog.remove();
       });
     }
